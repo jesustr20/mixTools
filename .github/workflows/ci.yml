@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    outputs:
+      backend: ${{ steps.filter.outputs.backend }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            backend:
+              - 'backend/**'
+              - '.github/workflows/ci.yml'
+
+  lint-and-test-backend:
+    needs: changes
+    if: needs.changes.outputs.backend == 'true'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Instalar dependencias del sistema
+        run: sudo apt-get update && sudo apt-get install -y libreoffice ghostscript
+
+      - name: Instalar dependencias de Python
+        run: |
+          pip install -r requirements.txt --break-system-packages
+          pip install ruff pytest --break-system-packages
+
+      - name: Lint (ruff)
+        run: ruff check app/
+
+      - name: Tests (si existen)
+        run: |
+          if [ -d "tests" ]; then pytest; else echo "sin carpeta tests/ todavía"; fi

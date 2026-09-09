@@ -1,0 +1,19 @@
+// opencode.jsonc — config de proyecto para MixTools.
+// Verificá el id de modelo con `opencode models` antes de usarlo en serio:
+// los proveedores/modelos de OpenCode cambian seguido y esto puede quedar
+// desactualizado. Necesitás autenticar con `opencode auth login`
+// (proveedor deepseek) o tener DEEPSEEK_API_KEY en el entorno.
+{
+  "$schema": "https://opencode.ai/config.json",
+
+  "model": "deepseek/deepseek-chat",
+
+  // codebase-memory-mcp se auto-configura acá cuando corrés su install.sh
+  // (auto-detecta OpenCode) — no hace falta escribir el bloque MCP a mano.
+  // Corré `opencode mcp list` después de instalarlo para confirmar que
+  // aparece antes de asignarle tareas reales.
+  "mcp": {},
+
+  // AGENTS.md en la raíz se lee automático, no hace falta listarlo acá.
+  "instructions": []
+}

@@ -1,0 +1,15 @@
+fastapi
+uvicorn[standard]
+python-multipart
+PyMuPDF
+img2pdf
+pypdf
+pdf2docx
+mammoth
+beautifulsoup4
+lxml
+python-docx
+openpyxl
+
+# Requisitos del sistema (no son pip, instalar aparte):
+#   sudo apt install libreoffice ghostscript

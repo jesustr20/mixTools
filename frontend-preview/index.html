@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MixTools — Mesa de trabajo de documentos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#1B2430;
+    --ink-soft:#2A3648;
+    --paper:#EEF3F1;
+    --paper-raised:#F8FAF9;
+    --graphite:#22262B;
+    --graphite-soft:#5B6570;
+    --line:#C9CDCB;
+    --blue:#2F5FA3;
+    --blue-dark:#254c85;
+    --stamp:#B23A2E;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    font-family:'IBM Plex Sans', sans-serif;
+    background:var(--paper);
+    color:var(--graphite);
+    -webkit-font-smoothing:antialiased;
+  }
+  h1,h2,h3,.brand-name{font-family:'Archivo', sans-serif;}
+  .mono{font-family:'IBM Plex Mono', monospace;}
+
+  .app{display:flex; min-height:100vh;}
+
+  /* ---------- Rail lateral ---------- */
+  .rail{
+    width:248px; flex-shrink:0;
+    background:var(--ink);
+    color:#DCE3E8;
+    display:flex; flex-direction:column;
+    padding:28px 18px;
+  }
+  .brand{display:flex; align-items:center; gap:10px; margin-bottom:36px; padding:0 6px;}
+  .brand-mark{
+    width:30px; height:30px; border:1.5px solid #DCE3E8; border-radius:2px;
+    display:flex; align-items:center; justify-content:center;
+    position:relative; flex-shrink:0;
+  }
+  .brand-mark::before, .brand-mark::after{
+    content:''; position:absolute; background:#DCE3E8;
+  }
+  .brand-mark::before{ width:14px; height:1.5px; top:14px; left:8px; }
+  .brand-mark::after{ width:1.5px; height:14px; top:8px; left:14px; }
+  .brand-name{font-size:16px; font-weight:700; letter-spacing:0.2px; color:#fff;}
+  .brand-sub{font-size:11px; color:#8A97A6; margin-top:1px;}
+
+  .tools{display:flex; flex-direction:column; gap:4px;}
+  .tool-item{
+    display:flex; align-items:flex-start; gap:12px;
+    background:none; border:none; text-align:left;
+    color:#B7C1CC; padding:11px 10px; border-radius:var(--radius);
+    cursor:pointer; font-family:inherit; font-size:13.5px;
+    border-left:2px solid transparent;
+  }
+  .tool-item:hover{ background:var(--ink-soft); color:#fff; }
+  .tool-item.active{ background:var(--ink-soft); color:#fff; border-left:2px solid var(--blue); }
+  .tool-item:focus-visible{ outline:2px solid var(--blue); outline-offset:-2px; }
+  .tool-icon{ width:18px; height:18px; flex-shrink:0; margin-top:1px; }
+  .tool-icon svg{ width:100%; height:100%; }
+  .tool-label{font-weight:600; color:inherit;}
+  .tool-count{display:block; font-size:11px; color:#8A97A6; margin-top:2px; font-weight:400;}
+
+  .rail-footer{
+    margin-top:auto; padding-top:20px; font-size:12px; color:#8A97A6;
+    display:flex; align-items:center; gap:7px; border-top:1px solid #2A3648;
+    padding-top:16px; margin-top:20px;
+  }
+  .dot{width:7px; height:7px; border-radius:50%; background:#8A97A6; flex-shrink:0;}
+  .dot.ok{background:#4C9A6A;}
+  .dot.demo{background:#C99A3C;}
+
+  /* ---------- Canvas principal ---------- */
+  .canvas{
+    flex:1; padding:44px 52px; max-width:920px;
+  }
+  .canvas-header h1{ font-size:23px; margin:0 0 6px 0; font-weight:700; color:var(--ink); }
+  .canvas-header p{ font-size:14px; color:var(--graphite-soft); margin:0 0 28px 0; max-width:58ch; line-height:1.5;}
+
+  .chips{ display:flex; flex-wrap:wrap; gap:8px; margin-bottom:28px; }
+  .chip{
+    padding:8px 14px; border:1px solid var(--line); background:var(--paper-raised);
+    border-radius:20px; font-size:13px; cursor:pointer; color:var(--graphite);
+    font-family:inherit;
+  }
+  .chip:hover{ border-color:var(--blue); }
+  .chip.active{ background:var(--ink); color:#fff; border-color:var(--ink); }
+  .chip:focus-visible{ outline:2px solid var(--blue); outline-offset:2px; }
+
+  .workbench{
+    background:
+      linear-gradient(var(--paper-raised), var(--paper-raised)) padding-box,
+      repeating-linear-gradient(0deg, transparent, transparent 23px, rgba(27,36,48,0.045) 23px, rgba(27,36,48,0.045) 24px),
+      repeating-linear-gradient(90deg, transparent, transparent 23px, rgba(27,36,48,0.045) 23px, rgba(27,36,48,0.045) 24px);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:28px;
+  }
+
+  .dropzones{ display:flex; gap:20px; flex-wrap:wrap; }
+  .dropzone{
+    position:relative; flex:1; min-width:240px;
+    border:1.5px dashed #A9B0AC;
+    background:rgba(255,255,255,0.55);
+    padding:38px 20px; text-align:center; cursor:pointer;
+    transition:border-color .15s ease, background .15s ease;
+  }
+  .dropzone:hover, .dropzone.drag{ border-color:var(--blue); background:rgba(47,95,163,0.05); }
+  .dropzone:focus-visible{ outline:2px solid var(--blue); outline-offset:3px; }
+  .corner{ position:absolute; width:13px; height:13px; }
+  .corner.tl{ top:-1px; left:-1px; border-top:2px solid var(--ink); border-left:2px solid var(--ink); }
+  .corner.tr{ top:-1px; right:-1px; border-top:2px solid var(--ink); border-right:2px solid var(--ink); }
+  .corner.bl{ bottom:-1px; left:-1px; border-bottom:2px solid var(--ink); border-left:2px solid var(--ink); }
+  .corner.br{ bottom:-1px; right:-1px; border-bottom:2px solid var(--ink); border-right:2px solid var(--ink); }
+
+  .dz-icon{ width:30px; height:30px; margin:0 auto 12px; color:var(--graphite-soft); }
+  .dz-title{ font-size:14px; font-weight:600; color:var(--ink); margin-bottom:3px; }
+  .dz-hint{ font-size:12.5px; color:var(--graphite-soft); }
+  .dz-label{ font-size:11.5px; color:var(--graphite-soft); text-transform:none; margin-bottom:10px; font-weight:500;}
+
+  .file-card{
+    display:flex; align-items:center; gap:10px;
+    background:var(--paper-raised); border:1px solid var(--line);
+    padding:10px 12px; margin-top:10px; text-align:left; border-radius:2px;
+  }
+  .file-card .mono{ font-size:12px; color:var(--ink); display:block; }
+  .file-card .meta{ font-size:11px; color:var(--graphite-soft); }
+  .file-remove{ margin-left:auto; background:none; border:none; color:var(--graphite-soft); cursor:pointer; font-size:16px; line-height:1; padding:2px 4px;}
+  .file-remove:hover{ color:var(--stamp); }
+
+  .options-row{ display:flex; align-items:center; gap:8px; margin:18px 2px 0; font-size:13px; color:var(--graphite); }
+  .options-row input[type=checkbox]{ accent-color:var(--blue); width:15px; height:15px; }
+
+  .action-row{ margin-top:22px; display:flex; align-items:center; gap:16px; }
+  .btn-primary{
+    background:var(--blue); color:#fff; border:none; padding:11px 22px;
+    font-size:13.5px; font-weight:600; border-radius:2px; cursor:pointer;
+    font-family:inherit;
+  }
+  .btn-primary:hover{ background:var(--blue-dark); }
+  .btn-primary:disabled{ background:#AFC0D6; cursor:not-allowed; }
+  .btn-primary:focus-visible{ outline:2px solid var(--ink); outline-offset:2px; }
+
+  .progress-wrap{ flex:1; max-width:280px; }
+  .progress-track{
+    height:8px; background:#DCE1DE; border-radius:1px; overflow:hidden;
+    background-image:repeating-linear-gradient(90deg, transparent, transparent 9px, rgba(0,0,0,0.06) 9px, rgba(0,0,0,0.06) 10px);
+  }
+  .progress-fill{ height:100%; width:0%; background:var(--blue); transition:width .18s linear; }
+  .progress-label{ font-size:11px; margin-top:4px; color:var(--graphite-soft); }
+
+  /* ---------- Resultado ---------- */
+  .result{ margin-top:28px; border:1px solid var(--line); background:var(--paper-raised); padding:24px 28px; }
+  .result-head{ display:flex; align-items:center; gap:18px; margin-bottom:16px; }
+  .stamp{
+    font-family:'Archivo', sans-serif; font-weight:700; font-size:13px; letter-spacing:1px;
+    color:var(--stamp); border:2px solid var(--stamp); border-radius:3px;
+    padding:6px 14px; transform:rotate(-6deg); display:inline-block;
+    animation:stampIn .25s cubic-bezier(.2,1.4,.4,1);
+  }
+  @media (prefers-reduced-motion: reduce){ .stamp{ animation:none; } }
+  @keyframes stampIn{ from{ opacity:0; transform:rotate(-6deg) scale(1.4);} to{ opacity:1; transform:rotate(-6deg) scale(1);} }
+  .result-title{ font-size:14px; font-weight:600; color:var(--ink); }
+  .result-sub{ font-size:12.5px; color:var(--graphite-soft); margin-top:2px; }
+
+  .btn-download{
+    display:inline-flex; align-items:center; gap:8px;
+    background:var(--ink); color:#fff; text-decoration:none;
+    padding:10px 18px; font-size:13px; font-weight:600; border-radius:2px;
+  }
+  .btn-download:hover{ background:var(--ink-soft); }
+  .btn-download[aria-disabled="true"]{ background:#AAB2BA; pointer-events:none; }
+
+  .demo-note{
+    font-size:12px; color:#8A6A1E; background:#FBF1DC; border:1px solid #EBD8A6;
+    padding:8px 12px; border-radius:2px; margin-top:12px;
+  }
+
+  .diff-preview{ font-size:14px; line-height:1.7; background:#fff; border:1px solid var(--line); padding:16px 18px; margin-top:14px; }
+  .diff-preview del{ background:#FBE0DC; color:#8B2E24; text-decoration:line-through; }
+  .diff-preview ins{ background:#DCEEDD; color:#245C33; text-decoration:none; }
+  .diff-stats{ display:flex; gap:18px; margin-top:14px; }
+  .diff-stat{ font-size:12px; color:var(--graphite-soft); }
+  .diff-stat b{ display:block; font-size:18px; color:var(--ink); font-family:'Archivo',sans-serif; }
+
+  .html-preview{
+    font-family:'IBM Plex Mono', monospace; font-size:12px; line-height:1.6;
+    background:var(--ink); color:#D8E0E6; padding:16px 18px; margin-top:14px;
+    max-height:220px; overflow:auto; white-space:pre-wrap; word-break:break-word;
+  }
+  .copy-btn{
+    margin-top:10px; background:none; border:1px solid var(--line); color:var(--graphite);
+    padding:7px 14px; font-size:12.5px; border-radius:2px; cursor:pointer; font-family:inherit;
+  }
+  .copy-btn:hover{ border-color:var(--blue); color:var(--blue); }
+
+  .reset-link{ background:none; border:none; color:var(--graphite-soft); font-size:12.5px; text-decoration:underline; cursor:pointer; margin-top:14px; font-family:inherit; padding:0;}
+
+  @media (max-width: 760px){
+    .app{ flex-direction:column; }
+    .rail{ width:100%; flex-direction:row; align-items:center; padding:14px 16px; overflow-x:auto; }
+    .brand{ margin-bottom:0; }
+    .tools{ flex-direction:row; }
+    .tool-item{ white-space:nowrap; }
+    .rail-footer{ display:none; }
+    .canvas{ padding:28px 20px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="rail">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true"></div>
+      <div>
+        <div class="brand-name">MixTools</div>
+        <div class="brand-sub">mesa de trabajo</div>
+      </div>
+    </div>
+    <nav class="tools" id="tool-nav"></nav>
+    <div class="rail-footer">
+      <span class="dot" id="status-dot"></span>
+      <span id="status-text">Verificando backend…</span>
+    </div>
+  </aside>
+
+  <main class="canvas">
+    <div class="canvas-header">
+      <h1 id="tool-title"></h1>
+      <p id="tool-desc"></p>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div id="workbench-container"></div>
+    <div id="result-container"></div>
+  </main>
+</div>
+
+<script>
+const API_BASE = "http://localhost:8000";
+
+const ICONS = {
+  converter: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 3h10l6 6v12H4z"/><path d="M14 3v6h6"/><path d="M8 15l3-3 3 3M11 12v6" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  html: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 3h10l6 6v12H4z"/><path d="M14 3v6h6"/><path d="M8 14l1.5 4L11 15M13 14l1.5 4L16 15" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  compare: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 3v18M17 3v18"/><path d="M4 8h6M14 8h6M4 16h6M14 16h6" stroke-linecap="round"/></svg>`,
+  upload: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 16V4M7 9l5-5 5 5" stroke-linecap="round" stroke-linejoin="round"/><path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" stroke-linecap="round"/></svg>`,
+};
+
+const TOOLS = {
+  converter: {
+    label: "Conversor",
+    title: "Conversor de archivos",
+    desc: "Convierte, une, divide y comprime sin límites mensuales — las mismas herramientas de fondo que iLovePDF, corriendo en tu propio backend.",
+    utilities: [
+      { id:"pdf-a-jpg", label:"PDF → JPG", endpoint:"/api/converter/pdf-a-jpg", accept:".pdf", multiple:false, hint:"Un PDF, cualquier número de páginas" },
+      { id:"jpg-a-pdf", label:"JPG → PDF", endpoint:"/api/converter/jpg-a-pdf", accept:"image/*", multiple:true, filesField:"files", hint:"Una o varias imágenes, en orden" },
+      { id:"office-a-pdf", label:"Word/Excel → PDF", endpoint:"/api/converter/office-a-pdf", accept:".doc,.docx,.xls,.xlsx,.ppt,.pptx", multiple:false, hint:"Un documento de Office" },
+      { id:"pdf-a-word", label:"PDF → Word", endpoint:"/api/converter/pdf-a-word", accept:".pdf", multiple:false, hint:"PDF con texto (no escaneado)" },
+      { id:"merge", label:"Unir PDFs", endpoint:"/api/converter/merge", accept:".pdf", multiple:true, filesField:"files", hint:"Dos o más PDF, en el orden final" },
+      { id:"split", label:"Dividir PDF", endpoint:"/api/converter/split", accept:".pdf", multiple:false, hint:"Se entrega un ZIP, una página por archivo" },
+      { id:"comprimir", label:"Comprimir", endpoint:"/api/converter/comprimir", accept:".pdf", multiple:false, hint:"Reduce el peso conservando legibilidad" },
+    ]
+  },
+  html: {
+    label: "Word → HTML",
+    title: "Word a HTML limpio",
+    desc: "Convierte un .docx a HTML semántico, sin la basura mso-* que deja Word — listo para pegar en Sperant o cualquier CMS.",
+    utilities: [
+      { id:"word-html", label:"Word → HTML", endpoint:"/api/html-converter/convertir", accept:".docx", multiple:false, hint:"Documento Word (.docx)", jsonResponse:true, withToggle:true },
+    ]
+  },
+  compare: {
+    label: "Comparador",
+    title: "Comparador de documentos",
+    desc: "Compara dos versiones de un PDF, Word o Excel y resalta qué cambió — texto agregado, eliminado o modificado.",
+    utilities: [
+      { id:"comparar", label:"Comparar versiones", endpoint:"/api/comparator/comparar", accept:".pdf,.docx,.xlsx", dual:true, hint:"Documento" },
+    ]
+  }
+};
+
+let state = { tool:"converter", utility:"pdf-a-jpg", files:{}, backendOk:false };
+
+function renderNav(){
+  const nav = document.getElementById("tool-nav");
+  nav.innerHTML = "";
+  Object.entries(TOOLS).forEach(([key, t]) => {
+    const btn = document.createElement("button");
+    btn.className = "tool-item" + (key === state.tool ? " active" : "");
+    btn.innerHTML = `<span class="tool-icon">${ICONS[key]}</span><span><span class="tool-label">${t.label}</span><span class="tool-count">${t.utilities.length} utilidad${t.utilities.length>1?'es':''}</span></span>`;
+    btn.addEventListener("click", () => {
+      state.tool = key;
+      state.utility = t.utilities[0].id;
+      state.files = {};
+      renderAll();
+    });
+    nav.appendChild(btn);
+  });
+}
+
+function currentUtility(){
+  const tool = TOOLS[state.tool];
+  return tool.utilities.find(u => u.id === state.utility);
+}
+
+function renderHeader(){
+  const tool = TOOLS[state.tool];
+  document.getElementById("tool-title").textContent = tool.title;
+  document.getElementById("tool-desc").textContent = tool.desc;
+}
+
+function renderChips(){
+  const wrap = document.getElementById("chips");
+  wrap.innerHTML = "";
+  TOOLS[state.tool].utilities.forEach(u => {
+    const chip = document.createElement("button");
+    chip.className = "chip" + (u.id === state.utility ? " active" : "");
+    chip.textContent = u.label;
+    chip.addEventListener("click", () => {
+      state.utility = u.id;
+      state.files = {};
+      renderWorkbench();
+      clearResult();
+    });
+    wrap.appendChild(chip);
+  });
+}
+
+function fileMeta(file){
+  const kb = file.size / 1024;
+  const size = kb > 1024 ? (kb/1024).toFixed(1) + " MB" : Math.round(kb) + " KB";
+  return `${file.name}<span class="meta"> · ${size}</span>`;
+}
+
+function makeDropzone(slot, label, accept, multiple){
+  const dz = document.createElement("div");
+  dz.className = "dropzone";
+  dz.tabIndex = 0;
+  dz.dataset.slot = slot;
+  dz.innerHTML = `
+    <span class="corner tl"></span><span class="corner tr"></span><span class="corner bl"></span><span class="corner br"></span>
+    <div class="dz-label">${label}</div>
+    <div class="dz-icon">${ICONS.upload}</div>
+    <div class="dz-title">Arrastra tu archivo aquí</div>
+    <div class="dz-hint">o haz clic para elegir · ${accept.replaceAll(',', ' / ')}</div>
+    <div class="dz-files"></div>
+  `;
+  const input = document.createElement("input");
+  input.type = "file"; input.accept = accept; input.multiple = !!multiple; input.hidden = true;
+  dz.appendChild(input);
+
+  const openPicker = () => input.click();
+  dz.addEventListener("click", (e) => { if(e.target.closest('.file-remove')) return; openPicker(); });
+  dz.addEventListener("keydown", (e) => { if(e.key === "Enter" || e.key === " "){ e.preventDefault(); openPicker(); } });
+  ["dragenter","dragover"].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.add("drag"); }));
+  ["dragleave","drop"].forEach(ev => dz.addEventListener(ev, e => { e.preventDefault(); dz.classList.remove("drag"); }));
+  dz.addEventListener("drop", e => setFiles(slot, e.dataTransfer.files, multiple, dz));
+  input.addEventListener("change", e => setFiles(slot, e.target.files, multiple, dz));
+
+  return dz;
+}
+
+function setFiles(slot, fileList, multiple, dzEl){
+  const arr = Array.from(fileList);
+  if(!arr.length) return;
+  state.files[slot] = multiple ? arr : [arr[0]];
+  renderFileList(dzEl, slot, multiple);
+  updateActionState();
+}
+
+function renderFileList(dzEl, slot, multiple){
+  const holder = dzEl.querySelector(".dz-files");
+  holder.innerHTML = "";
+  (state.files[slot] || []).forEach((f, idx) => {
+    const card = document.createElement("div");
+    card.className = "file-card";
+    card.innerHTML = `<span class="mono">${fileMeta(f)}</span><button class="file-remove" aria-label="Quitar archivo" type="button">&times;</button>`;
+    card.querySelector(".file-remove").addEventListener("click", (e) => {
+      e.stopPropagation();
+      state.files[slot].splice(idx, 1);
+      if(!state.files[slot].length) delete state.files[slot];
+      renderFileList(dzEl, slot, multiple);
+      updateActionState();
+    });
+    holder.appendChild(card);
+  });
+}
+
+function renderWorkbench(){
+  const u = currentUtility();
+  const container = document.getElementById("workbench-container");
+  container.innerHTML = "";
+
+  const bench = document.createElement("div");
+  bench.className = "workbench";
+
+  const dzWrap = document.createElement("div");
+  dzWrap.className = "dropzones";
+  if(u.dual){
+    dzWrap.appendChild(makeDropzone("a", "Versión A", u.accept, false));
+    dzWrap.appendChild(makeDropzone("b", "Versión B", u.accept, false));
+  } else {
+    dzWrap.appendChild(makeDropzone("main", u.hint, u.accept, u.multiple));
+  }
+  bench.appendChild(dzWrap);
+
+  if(u.withToggle){
+    const opt = document.createElement("label");
+    opt.className = "options-row";
+    opt.innerHTML = `<input type="checkbox" id="strip-styles" checked> Quitar estilos mso-* de Word (recomendado)`;
+    bench.appendChild(opt);
+  }
+
+  const actionRow = document.createElement("div");
+  actionRow.className = "action-row";
+  actionRow.innerHTML = `
+    <button class="btn-primary" id="run-btn" disabled>${u.dual ? "Comparar" : "Convertir"}</button>
+    <div class="progress-wrap" id="progress-wrap" style="display:none;">
+      <div class="progress-track"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-label" id="progress-label">Subiendo…</div>
+    </div>
+  `;
+  bench.appendChild(actionRow);
+  container.appendChild(bench);
+
+  document.getElementById("run-btn").addEventListener("click", runConversion);
+  updateActionState();
+}
+
+function updateActionState(){
+  const u = currentUtility();
+  const btn = document.getElementById("run-btn");
+  if(!btn) return;
+  let ready;
+  if(u.dual){ ready = state.files.a && state.files.b; }
+  else if(u.id === "merge"){ ready = state.files.main && state.files.main.length >= 2; }
+  else { ready = state.files.main && state.files.main.length >= 1; }
+  btn.disabled = !ready;
+}
+
+function clearResult(){ document.getElementById("result-container").innerHTML = ""; }
+
+function setProgress(pct, label){
+  document.getElementById("progress-wrap").style.display = "block";
+  document.getElementById("progress-fill").style.width = pct + "%";
+  document.getElementById("progress-label").textContent = label;
+}
+
+async function runConversion(){
+  const u = currentUtility();
+  const btn = document.getElementById("run-btn");
+  btn.disabled = true;
+  clearResult();
+  setProgress(8, "Preparando archivos…");
+
+  const form = new FormData();
+  if(u.dual){
+    form.append("archivo_a", state.files.a[0]);
+    form.append("archivo_b", state.files.b[0]);
+  } else if(u.filesField){
+    state.files.main.forEach(f => form.append("files", f));
+  } else {
+    form.append("file", state.files.main[0]);
+  }
+
+  let url = API_BASE + u.endpoint;
+  if(u.withToggle){
+    const strip = document.getElementById("strip-styles").checked;
+    url += `?strip_styles=${strip}&devolver_json=true`;
+  }
+
+  try{
+    const result = await uploadWithProgress(url, form);
+    showResult(u, result, true);
+  }catch(err){
+    runDemoFallback(u);
+  }
+}
+
+function uploadWithProgress(url, form){
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open("POST", url);
+    xhr.timeout = 8000;
+    xhr.responseType = "blob";
+    xhr.upload.onprogress = (e) => {
+      if(e.lengthComputable){
+        const pct = Math.min(90, Math.round((e.loaded / e.total) * 90));
+        setProgress(pct, "Subiendo…");
+      }
+    };
+    xhr.onload = () => {
+      if(xhr.status >= 200 && xhr.status < 300){
+        setProgress(100, "Listo");
+        const contentType = xhr.getResponseHeader("Content-Type") || "";
+        resolve({ blob: xhr.response, contentType, headers: xhr.getAllResponseHeaders() });
+      } else {
+        reject(new Error("HTTP " + xhr.status));
+      }
+    };
+    xhr.onerror = () => reject(new Error("network"));
+    xhr.ontimeout = () => reject(new Error("timeout"));
+    xhr.send(form);
+  });
+}
+
+function runDemoFallback(u){
+  setProgress(20, "Modo demo (sin backend)…");
+  let pct = 20;
+  const iv = setInterval(() => {
+    pct += 15;
+    setProgress(Math.min(pct, 95), "Modo demo (sin backend)…");
+    if(pct >= 95){
+      clearInterval(iv);
+      setTimeout(() => { setProgress(100,"Listo"); showResult(u, null, false); }, 200);
+    }
+  }, 180);
+}
+
+async function showResult(u, result, real){
+  const container = document.getElementById("result-container");
+  const box = document.createElement("div");
+  box.className = "result";
+
+  let bodyHtml = "";
+
+  if(u.dual && real){
+    const text = await result.blob.text();
+    const data = JSON.parse(text);
+    bodyHtml = `
+      <div class="diff-preview">${data.diff_html}</div>
+      <div class="diff-stats">
+        <div class="diff-stat"><b>${data.stats.palabras_agregadas}</b>palabras agregadas</div>
+        <div class="diff-stat"><b>${data.stats.palabras_eliminadas}</b>palabras eliminadas</div>
+        <div class="diff-stat"><b>${data.stats.similitud}%</b>similitud</div>
+      </div>`;
+  } else if(u.dual && !real){
+    bodyHtml = `
+      <div class="diff-preview">Documento de prueba <ins>modificado</ins> con un párrafo <del>anterior</del><ins>nuevo</ins> de ejemplo.</div>
+      <div class="demo-note">Conecta tu backend en <span class="mono">localhost:8000</span> para comparar tus archivos reales.</div>`;
+  } else if(u.withToggle && real){
+    const text = await result.blob.text();
+    const data = JSON.parse(text);
+    const escaped = data.html.replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    bodyHtml = `
+      <div class="html-preview">${escaped}</div>
+      <button class="copy-btn" id="copy-html">Copiar HTML</button>`;
+  } else if(u.withToggle && !real){
+    bodyHtml = `
+      <div class="html-preview">&lt;h1&gt;Documento de prueba&lt;/h1&gt;\n&lt;p&gt;Este es un párrafo de ejemplo.&lt;/p&gt;</div>
+      <div class="demo-note">Conecta tu backend en <span class="mono">localhost:8000</span> para convertir tu documento real.</div>`;
+  } else if(real){
+    const objUrl = URL.createObjectURL(result.blob);
+    const filename = guessFilename(u);
+    bodyHtml = `<a class="btn-download" href="${objUrl}" download="${filename}">Descargar ${filename}</a>`;
+  } else {
+    bodyHtml = `
+      <a class="btn-download" aria-disabled="true" href="#">Descargar archivo</a>
+      <div class="demo-note">Conecta tu backend en <span class="mono">localhost:8000</span> para generar y descargar el archivo real.</div>`;
+  }
+
+  box.innerHTML = `
+    <div class="result-head">
+      <span class="stamp">LISTO</span>
+      <div>
+        <div class="result-title">${real ? "Procesado con tu backend" : "Vista previa (modo demo)"}</div>
+        <div class="result-sub">${u.label}</div>
+      </div>
+    </div>
+    ${bodyHtml}
+    <button class="reset-link" id="reset-btn" type="button">Hacer otra conversión</button>
+  `;
+  container.innerHTML = "";
+  container.appendChild(box);
+
+  const copyBtn = document.getElementById("copy-html");
+  if(copyBtn){
+    copyBtn.addEventListener("click", () => {
+      const text = box.querySelector(".html-preview").textContent;
+      navigator.clipboard.writeText(text);
+      copyBtn.textContent = "Copiado ✓";
+      setTimeout(() => copyBtn.textContent = "Copiar HTML", 1500);
+    });
+  }
+  document.getElementById("reset-btn").addEventListener("click", () => {
+    state.files = {};
+    clearResult();
+    renderWorkbench();
+  });
+}
+
+function guessFilename(u){
+  const map = {
+    "pdf-a-jpg":"paginas.zip", "jpg-a-pdf":"convertido.pdf", "office-a-pdf":"documento.pdf",
+    "pdf-a-word":"documento.docx", "merge":"unido.pdf", "split":"dividido.zip", "comprimir":"comprimido.pdf"
+  };
+  return map[u.id] || "archivo";
+}
+
+async function checkBackend(){
+  const dot = document.getElementById("status-dot");
+  const text = document.getElementById("status-text");
+  try{
+    const ctrl = new AbortController();
+    const t = setTimeout(() => ctrl.abort(), 2500);
+    const res = await fetch(API_BASE + "/api/health", { signal: ctrl.signal });
+    clearTimeout(t);
+    if(res.ok){
+      dot.className = "dot ok"; text.textContent = "Backend conectado";
+      state.backendOk = true; return;
+    }
+    throw new Error("bad status");
+  }catch(e){
+    dot.className = "dot demo"; text.textContent = "Modo demo — sin backend";
+    state.backendOk = false;
+  }
+}
+
+function renderAll(){
+  renderNav();
+  renderHeader();
+  renderChips();
+  renderWorkbench();
+  clearResult();
+}
+
+renderAll();
+checkBackend();
+</script>
+</body>
+</html>

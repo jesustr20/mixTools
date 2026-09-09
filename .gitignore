@@ -1,0 +1,47 @@
+# --- Python (backend/) ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# Carpeta de trabajo temporal del backend — se genera y borra en runtime,
+# nunca debe versionarse. El .gitkeep sí se versiona (regla de abajo).
+backend/tmp/*
+!backend/tmp/.gitkeep
+
+# --- Node / React (frontend/) ---
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+frontend/coverage/
+
+# --- Variables de entorno / secretos — nunca se versionan ---
+.env
+.env.local
+*.env
+!.env.example
+!frontend/.env.example
+
+# --- Sistema operativo ---
+.DS_Store
+Thumbs.db
+
+# --- Editores ---
+.vscode/*
+!.vscode/extensions.json
+.idea/
+
+# --- Agentes / OpenCode / codebase-memory-mcp ---
+# Los índices y cachés locales de codebase-memory-mcp no deben versionarse
+# (son grandes, se regeneran, y son específicos de cada máquina). El nombre
+# exacto de la carpeta puede variar según versión del instalador — cubrimos
+# los patrones más probables.
+.cbm/
+.codebase-memory/
+*.cbm-index
+
+# Logs sueltos que puedan quedar de correr uvicorn/vite a mano
+*.log

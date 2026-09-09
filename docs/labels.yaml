@@ -1,0 +1,65 @@
+# docs/labels.yaml
+# Taxonomía de labels para GitHub. sync-labels.sh lee este archivo y crea/actualiza
+# los labels en el repo (idempotente: se puede correr las veces que sea).
+#
+# Convención de color: gris azulado = tipo, escala roja-a-amarilla = prioridad,
+# azules pálidos = área/módulo, ámbar = estado de los gates del Rail.
+
+labels:
+  # --- Tipo de issue ---
+  - name: "type:epic"
+    color: "5319E7"
+    description: "Capacidad de negocio completa (Definición del Rail)"
+  - name: "type:user-story"
+    color: "0E8A16"
+    description: "As a / I want / so that + Acceptance"
+  - name: "type:tech-task"
+    color: "1D76DB"
+    description: "Goal / Tasks — trabajo técnico sin historia de usuario"
+  - name: "type:spike"
+    color: "FBCA04"
+    description: "Spike técnico / ADR — decisión cara de deshacer"
+
+  # --- Prioridad ---
+  - name: "P0"
+    color: "B60205"
+    description: "Bloquea todo lo demás"
+  - name: "P1"
+    color: "D93F0B"
+    description: "Importante, no bloqueante"
+  - name: "P2"
+    color: "FEF2C0"
+    description: "Nice to have"
+
+  # --- Área / módulo ---
+  - name: "area:converter"
+    color: "C5DEF5"
+    description: "Herramienta 1 — Conversor de archivos"
+  - name: "area:html-converter"
+    color: "BFD4F2"
+    description: "Herramienta 2 — Word a HTML limpio"
+  - name: "area:comparator"
+    color: "BFE3F2"
+    description: "Herramienta 3 — Comparador de documentos"
+  - name: "area:frontend"
+    color: "D4C5F9"
+    description: "UI/UX, React/Tailwind"
+  - name: "area:infra"
+    color: "E1E4E8"
+    description: "Repo, CI/CD, tooling, agentes"
+
+  # --- Estado de los gates del Rail (ver docs de metodología) ---
+  - name: "gate:critica-pendiente"
+    color: "FBCA04"
+    description: "Falta que la otra persona lea y tire problemas"
+  - name: "gate:alineacion-pendiente"
+    color: "FBCA04"
+    description: "Falta confirmar orden/dependencias antes de codear"
+  - name: "gate:listo-para-build"
+    color: "0E8A16"
+    description: "Pasó Crítica y Alineación — se puede asignar a DeepSeek/Build"
+
+  # --- Estado general ---
+  - name: "status:blocked"
+    color: "E4E669"
+    description: "Depende de algo que no está resuelto todavía"

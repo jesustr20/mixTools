@@ -1,0 +1,38 @@
+name: Issue Ops (crear labels + issues)
+
+# Corre los mismos scripts de scripts/ pero disparados desde la UI de GitHub
+# Actions en vez de tu máquina — útil si querés correrlo sin tener `gh`
+# instalado localmente. Usa el GITHUB_TOKEN automático del workflow, no
+# necesita ningún secret adicional.
+on:
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: "Simular sin crear nada (dry-run)"
+        type: boolean
+        default: true
+
+permissions:
+  issues: write
+
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Sincronizar labels
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ARGS=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="--dry-run"; fi
+          python3 scripts/sync_labels.py --repo "${{ github.repository }}" $ARGS
+
+      - name: Crear issues
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          ARGS=""
+          if [ "${{ inputs.dry_run }}" = "true" ]; then ARGS="--dry-run"; fi
+          python3 scripts/create_github_issues.py --repo "${{ github.repository }}" $ARGS
