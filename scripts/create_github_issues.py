@@ -47,7 +47,7 @@ def run(cmd: list[str], dry_run: bool, capture: bool = True) -> str:
     result = subprocess.run(cmd, capture_output=capture, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"Falló: {' '.join(cmd)}\n{result.stderr}")
-    return result.stdout.strip()
+    return result.stdout.strip() if result.stdout else "" if result.stdout else ""
 
 
 def check_prereqs():
