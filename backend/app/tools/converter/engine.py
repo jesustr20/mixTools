@@ -20,9 +20,10 @@ def _subprocess_env() -> dict:
     env["HOME"] = str(_LO_HOME)
     return env
 
-import pymupdf as fitz  # PyMuPDF (nombre nuevo, "fitz" queda deprecado)
 import img2pdf
+import pymupdf as fitz  # PyMuPDF (nombre nuevo, "fitz" queda deprecado)
 from pypdf import PdfReader, PdfWriter
+
 
 # ---------------------------------------------------------------------------
 # PDF -> JPG
@@ -68,7 +69,7 @@ def office_to_pdf(input_path: Path, out_dir: Path) -> Path:
         str(input_path),
     ]
     result = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=120, env=_subprocess_env()
+        cmd, capture_output=True, text=True, timeout=120, env=_subprocess_env(), check=False
     )
     if result.returncode != 0:
         raise RuntimeError(f"LibreOffice falló: {result.stderr}")
@@ -136,7 +137,7 @@ def compress_pdf(pdf_path: Path, out_path: Path, image_quality: int = 40) -> Pat
         f"-sOutputFile={out_path}", str(pdf_path),
     ]
     result = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=120, env=_subprocess_env()
+        cmd, capture_output=True, text=True, timeout=120, env=_subprocess_env(), check=False
     )
     if result.returncode != 0 or not out_path.exists():
         raise RuntimeError(f"Ghostscript falló: {result.stderr}")

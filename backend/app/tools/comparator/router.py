@@ -23,7 +23,7 @@ def comparar(archivo_a: UploadFile = File(...), archivo_b: UploadFile = File(...
         path_b = save_upload(archivo_b, ws)
         try:
             resultado = engine.compare_files(path_a, path_b)
-        except Exception as e:
+        except Exception as e:  # noqa: BLE001
             raise HTTPException(422, f"No se pudo comparar: {e}")
         return JSONResponse(resultado)
     finally:

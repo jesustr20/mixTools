@@ -11,9 +11,10 @@ import difflib
 import html
 from pathlib import Path
 
-import pymupdf as fitz  # PyMuPDF (nombre nuevo, "fitz" queda deprecado)
 import openpyxl
+import pymupdf as fitz  # PyMuPDF (nombre nuevo, "fitz" queda deprecado)
 from docx import Document
+
 
 # ---------------------------------------------------------------------------
 # Extracción de texto por tipo de archivo
