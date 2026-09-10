@@ -26,7 +26,7 @@ Para agregar una Herramienta 4 en el futuro: crea `app/tools/nueva_herramienta/`
 con su `engine.py` + `router.py`, y regístrala en `main.py` con
 `app.include_router(...)`. El resto del proyecto no se toca.
 
-## Requisitos del sistema (no son pip)
+## Requisitos del sistema (no son de uv)
 
 ```bash
 sudo apt install libreoffice ghostscript
@@ -34,21 +34,39 @@ sudo apt install libreoffice ghostscript
 
 ## Instalación
 
+Usamos [uv](https://docs.astral.sh/uv/) (Astral) en vez de pip — más rápido,
+y `uv.lock` fija versiones exactas (reproducible entre tu máquina, CI, y
+cualquiera que clone el repo).
+
 ```bash
+curl -LsSf https://astral.sh/uv/install.sh | sh
 cd backend
-pip install -r requirements.txt
+uv sync
 ```
 
 ## Levantar el servidor
 
 ```bash
 cd backend
-python3 -m uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+```
+
+**Nota WSL/Windows**: el `--host 0.0.0.0` es obligatorio en WSL2 — sin eso,
+el servidor solo acepta conexiones desde dentro de la propia VM de Linux,
+y el navegador de Windows (que técnicamente es "de afuera") se queda
+colgado esperando sin error ni éxito. En Linux nativo no cambia nada, así
+que el mismo comando sirve para las dos plataformas.
+
+## Lint y tests
+
+```bash
+uv run ruff check app/
+uv run pytest
 ```
 
 Documentación interactiva (Swagger) automática en:
 `http://localhost:8000/docs` — ahí puedes probar cada endpoint subiendo
-archivos directo desde el navegador, sin frontend todavía.
+archivos directo desde el navegador.
 
 ## Endpoints
 
@@ -62,6 +80,7 @@ archivos directo desde el navegador, sin frontend todavía.
 | `POST /merge` | Varios PDF -> uno solo |
 | `POST /split` | Un PDF -> ZIP con una página por archivo |
 | `POST /comprimir` | Reduce el tamaño del PDF (calidad "ebook") |
+| `POST /batch-pdf-a-jpg` | Varios PDFs a la vez -> `conversion_mixtools.zip` organizado |
 
 ### Herramienta 2 — Word a HTML (`/api/html-converter`)
 | Endpoint | Qué hace |
@@ -83,10 +102,9 @@ archivos directo desde el navegador, sin frontend todavía.
 - **OCR para PDFs escaneados**: `pdf-a-word` y el comparador funcionan sobre
   texto real del PDF. Si algún día necesitas convertir PDFs escaneados
   (imágenes), se agregaría `pytesseract` como utilidad nueva.
-- **Frontend**: este backend está pensado para consumirse desde una app
-  React con una vista por Herramienta y sus utilidades como pestañas/tabs
-  dentro, tal como lo planteaste. El backend ya expone todo lo necesario
-  vía HTTP + `/docs` para probarlo mientras se arma esa parte.
+- **Frontend**: React + Vite + Tailwind, en `frontend/`. Cubre PDF→JPG
+  (single y batch) hoy; el resto de las utilidades se van agregando
+  módulo por módulo.
 - **Multi-tenant/producción**: si algún día lo subes a un servidor
   (en vez de correrlo local), agrega autenticación básica antes de
   exponerlo a internet — ahora mismo cualquiera que llegue al puerto puede
