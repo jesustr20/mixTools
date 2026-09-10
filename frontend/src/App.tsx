@@ -24,7 +24,7 @@ function App() {
 
       <main className="flex-1 overflow-auto px-[52px] py-11 text-graphite">
         <header className="mb-7 border-b border-line pb-6">
-          <h1 className="m-0 mb-1.5 text-[27px] font-bold text-ink">{tool.title}</h1>
+          <h1 className="m-0 mb-1.5 text-[34px] font-bold text-ink">{tool.title}</h1>
           <p className="m-0 max-w-[58ch] text-sm leading-normal text-graphite-soft">{tool.desc}</p>
         </header>
 
@@ -34,9 +34,7 @@ function App() {
           onSelectUtility={setActiveUtility}
         />
 
-        <div className="flex justify-center">
-          {activeTool === 'converter' && activeUtility === 'pdf-a-jpg' && <PdfToJpgPanel />}
-        </div>
+        {activeTool === 'converter' && activeUtility === 'pdf-a-jpg' && <PdfToJpgPanel />}
       </main>
     </div>
   )
