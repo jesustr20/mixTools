@@ -34,7 +34,7 @@ function App() {
           onSelectUtility={setActiveUtility}
         />
 
-        <div className="flex justify-center">
+        <div className="mt-8 flex justify-center">
           {activeTool === 'converter' && activeUtility === 'pdf-a-jpg' && <PdfToJpgPanel />}
         </div>
       </main>
