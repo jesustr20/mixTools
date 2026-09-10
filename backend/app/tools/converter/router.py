@@ -89,6 +89,24 @@ def pdf_a_word(file: UploadFile = File(...)):
         raise
 
 
+@router.post("/batch-pdf-a-jpg")
+def batch_pdf_a_jpg(files: list[UploadFile] = File(...)):
+    if len(files) < 2:
+        raise HTTPException(400, "Se esperan 2 o más archivos .pdf")
+    ws = new_workspace()
+    try:
+        saved = []
+        for f in files:
+            if not f.filename.lower().endswith(".pdf"):
+                raise HTTPException(400, f"{f.filename} no es PDF")
+            saved.append(save_upload(f, ws))
+        zip_path = engine.batch_pdfs_to_jpg_zip(saved, ws)
+        return FileResponse(zip_path, filename=zip_path.name, background=cleanup_task(ws))
+    except Exception:
+        cleanup_now(ws)
+        raise
+
+
 @router.post("/merge")
 def merge(files: list[UploadFile] = File(...)):
     ws = new_workspace()

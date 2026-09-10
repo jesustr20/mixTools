@@ -1,4 +1,5 @@
 """Tests de la lógica pura del Conversor (solo pdf_to_jpg, walking skeleton)."""
+import zipfile
 from pathlib import Path
 
 import pymupdf as fitz
@@ -49,3 +50,56 @@ def test_pdf_to_jpg_multiple_pages(tmp_path: Path):
         width, height = _jpg_dimensions(image)
         assert width > 0
         assert height > 0
+
+
+def _zip_names(zip_path: Path) -> set[str]:
+    with zipfile.ZipFile(zip_path) as zf:
+        return set(zf.namelist())
+
+
+def test_batch_two_single_page_pdfs(tmp_path: Path):
+    p1 = _make_pdf(tmp_path / "recibo1.pdf", pages=1)
+    p2 = _make_pdf(tmp_path / "recibo2.pdf", pages=1)
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    zip_path = engine.batch_pdfs_to_jpg_zip([p1, p2], out_dir)
+
+    assert zip_path.name == "conversion_mixtools.zip"
+    assert _zip_names(zip_path) == {"recibo1.jpg", "recibo2.jpg"}
+
+
+def test_batch_one_single_one_multi_page_pdf(tmp_path: Path):
+    p1 = _make_pdf(tmp_path / "recibo1.pdf", pages=1)
+    p2 = _make_pdf(tmp_path / "recibo2.pdf", pages=3)
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    zip_path = engine.batch_pdfs_to_jpg_zip([p1, p2], out_dir)
+
+    assert _zip_names(zip_path) == {
+        "recibo1.jpg",
+        "recibo2/pagina_1.jpg",
+        "recibo2/pagina_2.jpg",
+        "recibo2/pagina_3.jpg",
+    }
+
+
+def test_batch_mixed_three_or_more_pdfs(tmp_path: Path):
+    p1 = _make_pdf(tmp_path / "a.pdf", pages=1)
+    p2 = _make_pdf(tmp_path / "b.pdf", pages=2)
+    p3 = _make_pdf(tmp_path / "c.pdf", pages=4)
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    zip_path = engine.batch_pdfs_to_jpg_zip([p1, p2, p3], out_dir)
+
+    assert _zip_names(zip_path) == {
+        "a.jpg",
+        "b/pagina_1.jpg",
+        "b/pagina_2.jpg",
+        "c/pagina_1.jpg",
+        "c/pagina_2.jpg",
+        "c/pagina_3.jpg",
+        "c/pagina_4.jpg",
+    }
