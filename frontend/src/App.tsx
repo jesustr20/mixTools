@@ -22,9 +22,9 @@ function App() {
     <div className="flex min-h-screen bg-paper">
       <Rail activeTool={activeTool} onSelectTool={handleSelectTool} />
 
-      <main className="max-w-[920px] flex-1 px-[52px] py-11 text-graphite">
-        <header className="mb-7">
-          <h1 className="m-0 mb-1.5 text-[23px] font-bold text-ink">{tool.title}</h1>
+      <main className="mx-auto max-w-[920px] flex-1 px-[52px] py-11 text-graphite">
+        <header className="mb-7 border-b border-line pb-6">
+          <h1 className="m-0 mb-1.5 text-[27px] font-bold text-ink">{tool.title}</h1>
           <p className="m-0 max-w-[58ch] text-sm leading-normal text-graphite-soft">{tool.desc}</p>
         </header>
 
