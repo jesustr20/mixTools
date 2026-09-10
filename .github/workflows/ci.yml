@@ -30,21 +30,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-
       - name: Instalar dependencias del sistema
         run: sudo apt-get update && sudo apt-get install -y libreoffice ghostscript
 
-      - name: Instalar dependencias de Python
-        run: |
-          pip install -r requirements.txt --break-system-packages
-          pip install ruff pytest --break-system-packages
+      - name: Instalar uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+          enable-cache: true
+          cache-dependency-glob: "backend/uv.lock"
+
+      - name: Instalar dependencias (uv sync, incluye dev)
+        run: uv sync --locked
 
       - name: Lint (ruff)
-        run: ruff check app/
+        run: uv run ruff check app/
 
       - name: Tests (si existen)
         run: |
-          if [ -d "tests" ]; then pytest; else echo "sin carpeta tests/ todavía"; fi
+          if [ -d "tests" ]; then uv run pytest; else echo "sin carpeta tests/ todavía"; fi
