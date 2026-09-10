@@ -38,9 +38,20 @@ def cleanup_now(ws_path: Path) -> None:
     shutil.rmtree(ws_path, ignore_errors=True)
 
 
-def save_upload(upload_file, dest_dir: Path) -> Path:
-    """Guarda un UploadFile de FastAPI en disco y devuelve la ruta."""
-    dest_path = dest_dir / upload_file.filename
+def save_upload(upload_file, dest_dir: Path, index: int | None = None) -> Path:
+    """Guarda un UploadFile de FastAPI en disco y devuelve la ruta.
+
+    Si se pasa `index`, el archivo va a un subdirectorio numerado propio
+    (``dest_dir/000/filename``) para que varios uploads del mismo request con
+    el mismo nombre no se pisen entre sí. Sin `index`, guarda directo en
+    ``dest_dir`` (comportamiento original).
+    """
+    if index is not None:
+        target_dir = dest_dir / f"{index:03d}"
+        target_dir.mkdir()
+    else:
+        target_dir = dest_dir
+    dest_path = target_dir / upload_file.filename
     with open(dest_path, "wb") as f:
         shutil.copyfileobj(upload_file.file, f)
     return dest_path
