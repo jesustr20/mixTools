@@ -47,10 +47,10 @@ def jpg_a_pdf(files: list[UploadFile] = File(...)):
     ws = new_workspace()
     try:
         saved = []
-        for f in files:
+        for i, f in enumerate(files):
             if Path(f.filename).suffix.lower() not in IMAGE_EXTS:
                 raise HTTPException(400, f"{f.filename} no es una imagen soportada")
-            saved.append(save_upload(f, ws))
+            saved.append(save_upload(f, ws, index=i))
         out_path = ws / "convertido.pdf"
         engine.images_to_pdf(saved, out_path)
         return FileResponse(out_path, filename=out_path.name, background=cleanup_task(ws))
@@ -96,10 +96,10 @@ def batch_pdf_a_jpg(files: list[UploadFile] = File(...)):
     ws = new_workspace()
     try:
         saved = []
-        for f in files:
+        for i, f in enumerate(files):
             if not f.filename.lower().endswith(".pdf"):
                 raise HTTPException(400, f"{f.filename} no es PDF")
-            saved.append(save_upload(f, ws))
+            saved.append(save_upload(f, ws, index=i))
         zip_path = engine.batch_pdfs_to_jpg_zip(saved, ws)
         return FileResponse(zip_path, filename=zip_path.name, background=cleanup_task(ws))
     except Exception:
@@ -112,10 +112,10 @@ def merge(files: list[UploadFile] = File(...)):
     ws = new_workspace()
     try:
         saved = []
-        for f in files:
+        for i, f in enumerate(files):
             if not f.filename.lower().endswith(".pdf"):
                 raise HTTPException(400, f"{f.filename} no es PDF")
-            saved.append(save_upload(f, ws))
+            saved.append(save_upload(f, ws, index=i))
         out_path = ws / "unido.pdf"
         engine.merge_pdfs(saved, out_path)
         return FileResponse(out_path, filename=out_path.name, background=cleanup_task(ws))
