@@ -103,7 +103,7 @@ function PdfToJpgPanel() {
       <div className="mt-[22px] flex items-center gap-4">
         <button
           type="button"
-          className="cursor-pointer rounded-[2px] bg-blue px-[22px] py-[11px] text-[13.5px] font-semibold text-white hover:bg-blue-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:bg-[#AFC0D6]"
+          className="cursor-pointer rounded-lg bg-blue px-[22px] py-[11px] text-[13.5px] font-semibold text-white shadow-sm hover:bg-blue-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:bg-[#AFC0D6]"
           disabled={files.length === 0 || status === 'uploading'}
           onClick={handleConvert}
         >
