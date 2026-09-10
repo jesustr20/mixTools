@@ -44,6 +44,15 @@ def pdf_to_jpg(pdf_path: Path, out_dir: Path, dpi: int = 150) -> list[Path]:
     return output_paths
 
 
+def _next_name(base: str, used: dict[str, int]) -> str:
+    """Devuelve `base` la primera vez y `base (n)` en colisiones, registrando el uso."""
+    n = used.get(base, 0)
+    used[base] = n + 1
+    if n == 0:
+        return base
+    return f"{base} ({n})"
+
+
 def batch_pdfs_to_jpg_zip(pdf_paths: list[Path], out_dir: Path, dpi: int = 150) -> Path:
     """Convierte varios PDFs a JPG y los empaqueta en un único zip organizado.
 
@@ -51,20 +60,26 @@ def batch_pdfs_to_jpg_zip(pdf_paths: list[Path], out_dir: Path, dpi: int = 150) 
       (ej. ``recibo1.jpg``).
     - PDF de 2+ páginas -> carpeta con el nombre del PDF y adentro
       ``pagina_1.jpg``, ``pagina_2.jpg``, ...
+    - Nombres duplicados: sufijo `` (1)``, `` (2)``... por separado para
+      imágenes sueltas y carpetas.
     """
     stage = out_dir / "_stage"
     stage.mkdir()
     zip_path = out_dir / "conversion_mixtools.zip"
+    used_files: dict[str, int] = {}
+    used_folders: dict[str, int] = {}
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
         for idx, pdf_path in enumerate(pdf_paths):
             per_pdf = stage / f"{idx:03d}"
             per_pdf.mkdir()
             images = pdf_to_jpg(pdf_path, per_pdf, dpi=dpi)
             if len(images) == 1:
-                zf.write(images[0], arcname=f"{pdf_path.stem}.jpg")
+                name = _next_name(pdf_path.stem, used_files)
+                zf.write(images[0], arcname=f"{name}.jpg")
             else:
+                folder = _next_name(pdf_path.stem, used_folders)
                 for i, image in enumerate(images, start=1):
-                    zf.write(image, arcname=f"{pdf_path.stem}/pagina_{i}.jpg")
+                    zf.write(image, arcname=f"{folder}/pagina_{i}.jpg")
     return zip_path
 
 
