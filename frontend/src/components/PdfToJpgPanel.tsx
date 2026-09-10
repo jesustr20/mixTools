@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import Dropzone from './Dropzone'
-import { pdfToJpg } from '../lib/api'
+import { batchPdfsToJpg, pdfToJpg } from '../lib/api'
 
 type Status = 'idle' | 'uploading' | 'done' | 'error'
 
@@ -15,7 +15,7 @@ function formatSize(bytes: number): string {
 }
 
 function PdfToJpgPanel() {
-  const [file, setFile] = useState<File | null>(null)
+  const [files, setFiles] = useState<File[]>([])
   const [status, setStatus] = useState<Status>('idle')
   const [result, setResult] = useState<Result | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -30,28 +30,40 @@ function PdfToJpgPanel() {
     }
   }, [downloadUrl])
 
-  const handleFile = (selected: File) => {
-    setFile(selected)
+  const handleFiles = (selected: File[]) => {
+    setFiles((prev) => [...prev, ...selected])
+    setStatus('idle')
+    setResult(null)
+    setError(null)
+  }
+
+  const removeFile = (index: number) => {
+    setFiles((prev) => prev.filter((_, i) => i !== index))
     setStatus('idle')
     setResult(null)
     setError(null)
   }
 
   const reset = () => {
-    setFile(null)
+    setFiles([])
     setStatus('idle')
     setResult(null)
     setError(null)
   }
 
   const handleConvert = async () => {
-    if (!file) return
+    if (files.length === 0) return
     setStatus('uploading')
     setResult(null)
     setError(null)
     try {
-      const blob = await pdfToJpg(file)
-      const filename = blob.type.includes('zip') ? 'paginas.zip' : 'resultado.jpg'
+      const blob = files.length === 1 ? await pdfToJpg(files[0]) : await batchPdfsToJpg(files)
+      const filename =
+        files.length === 1
+          ? blob.type.includes('zip')
+            ? 'paginas.zip'
+            : 'resultado.jpg'
+          : 'conversion_mixtools.zip'
       setResult({ blob, filename })
       setStatus('done')
     } catch (err) {
@@ -62,34 +74,37 @@ function PdfToJpgPanel() {
 
   return (
     <div className="workbench p-7">
-      <Dropzone
-        label="Un PDF, cualquier número de páginas"
-        accept=".pdf"
-        onFileSelect={handleFile}
-      />
+      <Dropzone label="Uno o varios PDFs" accept=".pdf" multiple onFilesSelect={handleFiles} />
 
-      {file && (
-        <div className="mt-2.5 flex items-center gap-2.5 rounded-[2px] border border-line bg-paper-raised px-3 py-2.5 text-left">
-          <span className="mono block text-xs text-ink">
-            {file.name}
-            <span className="text-[11px] text-graphite-soft"> · {formatSize(file.size)}</span>
-          </span>
-          <button
-            type="button"
-            className="ml-auto cursor-pointer border-none bg-none p-1 text-base leading-none text-graphite-soft hover:text-stamp"
-            aria-label="Quitar archivo"
-            onClick={reset}
-          >
-            &times;
-          </button>
-        </div>
+      {files.length > 0 && (
+        <ul className="mt-2.5 flex flex-col gap-2.5">
+          {files.map((file, index) => (
+            <li
+              key={`${file.name}-${index}`}
+              className="flex items-center gap-2.5 rounded-[2px] border border-line bg-paper-raised px-3 py-2.5 text-left"
+            >
+              <span className="mono block text-xs text-ink">
+                {file.name}
+                <span className="text-[11px] text-graphite-soft"> · {formatSize(file.size)}</span>
+              </span>
+              <button
+                type="button"
+                className="ml-auto cursor-pointer border-none bg-none p-1 text-base leading-none text-graphite-soft hover:text-stamp"
+                aria-label={`Quitar ${file.name}`}
+                onClick={() => removeFile(index)}
+              >
+                &times;
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
 
       <div className="mt-[22px] flex items-center gap-4">
         <button
           type="button"
           className="cursor-pointer rounded-[2px] bg-blue px-[22px] py-[11px] text-[13.5px] font-semibold text-white hover:bg-blue-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:bg-[#AFC0D6]"
-          disabled={!file || status === 'uploading'}
+          disabled={files.length === 0 || status === 'uploading'}
           onClick={handleConvert}
         >
           Convertir

@@ -4,16 +4,23 @@ import type { ChangeEvent, DragEvent, KeyboardEvent } from 'react'
 interface DropzoneProps {
   label: string
   accept?: string
-  onFileSelect: (file: File) => void
+  multiple?: boolean
+  onFileSelect?: (file: File) => void
+  onFilesSelect?: (files: File[]) => void
 }
 
-function Dropzone({ label, accept, onFileSelect }: DropzoneProps) {
+function Dropzone({ label, accept, multiple = false, onFileSelect, onFilesSelect }: DropzoneProps) {
   const inputRef = useRef<HTMLInputElement>(null)
   const [dragging, setDragging] = useState(false)
 
   const handleFiles = (files: FileList | null) => {
-    const file = files?.[0]
-    if (file) onFileSelect(file)
+    if (!files || files.length === 0) return
+    if (multiple) {
+      onFilesSelect?.(Array.from(files))
+    } else {
+      const file = files[0]
+      if (file) onFileSelect?.(file)
+    }
   }
 
   const handleDrop = (e: DragEvent<HTMLDivElement>) => {
@@ -63,13 +70,14 @@ function Dropzone({ label, accept, onFileSelect }: DropzoneProps) {
           <path d="M4 16v3a2 2 0 002 2h12a2 2 0 002-2v-3" strokeLinecap="round" />
         </svg>
       </div>
-      <div className="dz-title">Arrastra tu archivo aquí</div>
+      <div className="dz-title">Arrastra tus archivos aquí</div>
       <div className="dz-hint">o haz clic para elegir · {accept}</div>
 
       <input
         ref={inputRef}
         type="file"
         accept={accept}
+        multiple={multiple}
         className="hidden"
         onChange={(e: ChangeEvent<HTMLInputElement>) => handleFiles(e.target.files)}
         onClick={(e) => e.stopPropagation()}

@@ -44,4 +44,32 @@ export async function pdfToJpg(file: File, dpi?: number): Promise<Blob> {
   return response.blob()
 }
 
+/**
+ * Varios PDFs → un ZIP organizado.
+ * Envía múltiples .pdf como multipart/form-data (campo "files", repetido) y
+ * devuelve `conversion_mixtools.zip` como Blob.
+ */
+export async function batchPdfsToJpg(files: File[]): Promise<Blob> {
+  const form = new FormData()
+  for (const file of files) {
+    form.append('files', file)
+  }
+
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}/api/converter/batch-pdf-a-jpg`, {
+      method: 'POST',
+      body: form,
+    })
+  } catch {
+    throw new Error('No se pudo conectar con el backend. ¿Está corriendo en localhost:8000?')
+  }
+
+  if (!response.ok) {
+    throw new Error(await readError(response))
+  }
+
+  return response.blob()
+}
+
 export { API_BASE }
