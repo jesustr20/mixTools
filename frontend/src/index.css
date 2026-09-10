@@ -205,7 +205,7 @@
 .brand-mark::before {
   content: 'MT';
   font-family: 'Archivo', sans-serif;
-  font-size: 11px;
+  font-size: 13px;
   font-weight: 700;
   letter-spacing: 0.3px;
   color: #dce3e8;
@@ -216,11 +216,13 @@
   font-weight: 700;
   letter-spacing: 0.2px;
   color: #fff;
+  line-height: 1.1;
 }
 .brand-sub {
   font-size: 11px;
   color: #8a97a6;
-  margin-top: 1px;
+  margin-top: 0;
+  line-height: 1.1;
 }
 
 .tools {
