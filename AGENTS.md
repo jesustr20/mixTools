@@ -43,3 +43,10 @@ trabaje en este repo. OpenCode lee este archivo automáticamente al arrancar.
 No adivines. Un comentario `# TODO: confirmar con Jesús — ¿X o Y?` en el
 código o una pregunta en el resumen final es mejor que una decisión
 silenciosa que después hay que deshacer.
+11. **El PR siempre linkea al issue.** El body del PR (no solo el título)
+    tiene que incluir `Closes #<número>` — así GitHub cierra el issue solo
+    al mergear, y queda trazable qué PR resolvió qué. `gh pr create --fill`
+    NO alcanza para esto (solo copia el título/body del commit) — usá
+    `gh pr create --title "..." --body "Closes #N
+
+    <resumen>"` explícito.
