@@ -50,3 +50,14 @@ silenciosa que después hay que deshacer.
     `gh pr create --title "..." --body "Closes #N
 
     <resumen>"` explícito.
+
+## UI/UX — fidelidad al prototipo aprobado
+
+Si la tarea es de frontend: `frontend-preview/index.html` es la fuente de
+verdad visual, y `docs/design-tokens.md` tiene los valores exactos ya
+extraídos de ahí (colores, tipografía, radios). NO recreés el diseño "de
+memoria" o "a tu criterio" — copiá los tokens literales del archivo, no
+valores parecidos. Elementos de identidad (las esquinas de registro del
+dropzone, el sello rotado "LISTO", el rail oscuro) se portan tal cual, no se
+simplifican "para ir más rápido". Si algo no está claro cómo portarlo, se
+pregunta antes de improvisar.
