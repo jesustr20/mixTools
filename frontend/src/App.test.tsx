@@ -31,7 +31,7 @@ beforeEach(() => {
 describe('App', () => {
   it('renders without crashing', () => {
     render(<App />)
-    expect(screen.getByRole('heading', { name: /pdf → jpg/i })).toBeInTheDocument()
+    expect(screen.getByRole('heading', { name: /conversor de archivos/i })).toBeInTheDocument()
     expect(screen.getByText(/arrastra tus archivos aquí/i)).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /convertir/i })).toBeDisabled()
   })
