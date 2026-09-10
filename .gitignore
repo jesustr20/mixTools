@@ -45,3 +45,4 @@ Thumbs.db
 
 # Logs sueltos que puedan quedar de correr uvicorn/vite a mano
 *.log
+ci-fail-debug.log
