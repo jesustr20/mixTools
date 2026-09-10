@@ -5,6 +5,7 @@ Nada de FastAPI aquí -> se puede probar y reusar desde CLI, tests, etc.
 import os
 import subprocess
 import tempfile
+import zipfile
 from pathlib import Path
 
 # LibreOffice headless NECESITA una carpeta $HOME escribible para crear su
@@ -41,6 +42,30 @@ def pdf_to_jpg(pdf_path: Path, out_dir: Path, dpi: int = 150) -> list[Path]:
         output_paths.append(out_path)
     doc.close()
     return output_paths
+
+
+def batch_pdfs_to_jpg_zip(pdf_paths: list[Path], out_dir: Path, dpi: int = 150) -> Path:
+    """Convierte varios PDFs a JPG y los empaqueta en un único zip organizado.
+
+    - PDF de 1 página -> JPG suelto en la raíz, nombrado como el PDF
+      (ej. ``recibo1.jpg``).
+    - PDF de 2+ páginas -> carpeta con el nombre del PDF y adentro
+      ``pagina_1.jpg``, ``pagina_2.jpg``, ...
+    """
+    stage = out_dir / "_stage"
+    stage.mkdir()
+    zip_path = out_dir / "conversion_mixtools.zip"
+    with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        for idx, pdf_path in enumerate(pdf_paths):
+            per_pdf = stage / f"{idx:03d}"
+            per_pdf.mkdir()
+            images = pdf_to_jpg(pdf_path, per_pdf, dpi=dpi)
+            if len(images) == 1:
+                zf.write(images[0], arcname=f"{pdf_path.stem}.jpg")
+            else:
+                for i, image in enumerate(images, start=1):
+                    zf.write(image, arcname=f"{pdf_path.stem}/pagina_{i}.jpg")
+    return zip_path
 
 
 # ---------------------------------------------------------------------------
