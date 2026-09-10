@@ -57,6 +57,16 @@ def _zip_names(zip_path: Path) -> set[str]:
         return set(zf.namelist())
 
 
+def _make_pdfs_same_name(root: Path, pages_list: list[int]) -> list[Path]:
+    """Crea varios PDFs con el mismo nombre (`recibo.pdf`) en subcarpetas distintas."""
+    paths = []
+    for i, pages in enumerate(pages_list):
+        subdir = root / f"d{i}"
+        subdir.mkdir()
+        paths.append(_make_pdf(subdir / "recibo.pdf", pages=pages))
+    return paths
+
+
 def test_batch_two_single_page_pdfs(tmp_path: Path):
     p1 = _make_pdf(tmp_path / "recibo1.pdf", pages=1)
     p2 = _make_pdf(tmp_path / "recibo2.pdf", pages=1)
@@ -103,3 +113,39 @@ def test_batch_mixed_three_or_more_pdfs(tmp_path: Path):
         "c/pagina_3.jpg",
         "c/pagina_4.jpg",
     }
+
+
+def test_batch_duplicate_names_two_single_page(tmp_path: Path):
+    pdfs = _make_pdfs_same_name(tmp_path, [1, 1])
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    zip_path = engine.batch_pdfs_to_jpg_zip(pdfs, out_dir)
+
+    assert _zip_names(zip_path) == {"recibo.jpg", "recibo (1).jpg"}
+
+
+def test_batch_duplicate_names_single_and_multi_page(tmp_path: Path):
+    pdfs = _make_pdfs_same_name(tmp_path, [1, 3])
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    zip_path = engine.batch_pdfs_to_jpg_zip(pdfs, out_dir)
+
+    assert _zip_names(zip_path) == {
+        "recibo.jpg",
+        "recibo/pagina_1.jpg",
+        "recibo/pagina_2.jpg",
+        "recibo/pagina_3.jpg",
+    }
+
+
+def test_batch_duplicate_names_three_pdfs_ordered(tmp_path: Path):
+    pdfs = _make_pdfs_same_name(tmp_path, [1, 1, 1])
+    out_dir = tmp_path / "out"
+    out_dir.mkdir()
+
+    zip_path = engine.batch_pdfs_to_jpg_zip(pdfs, out_dir)
+
+    with zipfile.ZipFile(zip_path) as zf:
+        assert zf.namelist() == ["recibo.jpg", "recibo (1).jpg", "recibo (2).jpg"]
