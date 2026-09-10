@@ -73,7 +73,7 @@ function PdfToJpgPanel() {
   }
 
   return (
-    <div className="workbench w-full max-w-[600px] p-7">
+    <div className="workbench w-full max-w-[820px] p-7">
       <Dropzone label="Uno o varios PDFs" accept=".pdf" multiple onFilesSelect={handleFiles} />
 
       {files.length > 0 && (
