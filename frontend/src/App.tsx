@@ -22,22 +22,22 @@ function App() {
     <div className="flex min-h-screen bg-paper">
       <Rail activeTool={activeTool} onSelectTool={handleSelectTool} />
 
-      <div className="flex-1 overflow-auto">
-        <main className="mx-auto max-w-[920px] px-[52px] py-11 text-graphite">
-          <header className="mb-7 border-b border-line pb-6">
-            <h1 className="m-0 mb-1.5 text-[27px] font-bold text-ink">{tool.title}</h1>
-            <p className="m-0 max-w-[58ch] text-sm leading-normal text-graphite-soft">{tool.desc}</p>
-          </header>
+      <main className="flex-1 overflow-auto px-[52px] py-11 text-graphite">
+        <header className="mb-7 border-b border-line pb-6">
+          <h1 className="m-0 mb-1.5 text-[27px] font-bold text-ink">{tool.title}</h1>
+          <p className="m-0 max-w-[58ch] text-sm leading-normal text-graphite-soft">{tool.desc}</p>
+        </header>
 
-          <Chips
-            utilities={tool.utilities}
-            activeUtility={activeUtility}
-            onSelectUtility={setActiveUtility}
-          />
+        <Chips
+          utilities={tool.utilities}
+          activeUtility={activeUtility}
+          onSelectUtility={setActiveUtility}
+        />
 
+        <div className="flex justify-center">
           {activeTool === 'converter' && activeUtility === 'pdf-a-jpg' && <PdfToJpgPanel />}
-        </main>
-      </div>
+        </div>
+      </main>
     </div>
   )
 }
