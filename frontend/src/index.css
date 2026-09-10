@@ -22,6 +22,8 @@
 
 /* Dropzone — portado de frontend-preview/index.html */
 .dropzone {
+  border-radius: 6px;
+  box-shadow: 0 1px 2px rgba(27, 36, 48, 0.08);
   position: relative;
   border: 1.5px dashed #a9b0ac;
   background: rgba(255, 255, 255, 0.55);
@@ -73,17 +75,17 @@
   color: #5b6570;
 }
 .dz-title {
-  font-size: 14px;
+  font-size: 16px;
   font-weight: 600;
   color: #1b2430;
   margin-bottom: 3px;
 }
 .dz-hint {
-  font-size: 12.5px;
+  font-size: 14px;
   color: #5b6570;
 }
 .dz-label {
-  font-size: 11.5px;
+  font-size: 13px;
   color: #5b6570;
   margin-bottom: 10px;
   font-weight: 500;
@@ -91,6 +93,7 @@
 
 /* Workbench (grilla de registro) — portado de frontend-preview/index.html */
 .workbench {
+  box-shadow: 0 1px 2px rgba(27, 36, 48, 0.08);
   background:
     linear-gradient(#f8faf9, #f8faf9) padding-box,
     repeating-linear-gradient(
@@ -172,4 +175,170 @@
     opacity: 1;
     transform: rotate(-6deg) scale(1);
   }
+}
+
+/* Rail lateral — portado de frontend-preview/index.html */
+.rail {
+  width: 248px;
+  flex-shrink: 0;
+  background: #1b2430;
+  color: #dce3e8;
+  display: flex;
+  flex-direction: column;
+  padding: 28px 18px;
+}
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 36px;
+  padding: 0 6px;
+}
+.brand-mark {
+  width: 30px;
+  height: 30px;
+  border: 1.5px solid #dce3e8;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  flex-shrink: 0;
+}
+.brand-mark::before {
+  content: 'MT';
+  font-family: 'Archivo', sans-serif;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.3px;
+  color: #dce3e8;
+}
+.brand-name {
+  font-family: 'Archivo', sans-serif;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  color: #fff;
+  line-height: 1.1;
+}
+.brand-sub {
+  font-size: 11px;
+  color: #8a97a6;
+  margin-top: 0;
+  line-height: 1.1;
+}
+
+.tools {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.tool-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  background: none;
+  border: none;
+  text-align: left;
+  color: #b7c1cc;
+  padding: 11px 10px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 13.5px;
+  border-left: 2px solid transparent;
+}
+.tool-item:hover {
+  background: #2a3648;
+  color: #fff;
+}
+.tool-item.active {
+  background: #2a3648;
+  color: #fff;
+  border-left: 2px solid #2f5fa3;
+}
+.tool-item:focus-visible {
+  outline: 2px solid #2f5fa3;
+  outline-offset: -2px;
+}
+.tool-item:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+.tool-item:disabled:hover {
+  background: none;
+  color: #b7c1cc;
+}
+.tool-icon {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+.tool-icon svg {
+  width: 100%;
+  height: 100%;
+}
+.tool-label {
+  display: block;
+  font-weight: 600;
+  color: inherit;
+}
+.tool-count {
+  display: block;
+  font-size: 11px;
+  color: #8a97a6;
+  margin-top: 2px;
+  font-weight: 400;
+}
+
+.rail-footer {
+  margin-top: auto;
+  padding-top: 16px;
+  font-size: 12px;
+  color: #8a97a6;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  border-top: 1px solid #2a3648;
+}
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: #8a97a6;
+  flex-shrink: 0;
+}
+.dot.demo {
+  background: #c99a3c;
+}
+
+/* Chips de utilidades — portado de frontend-preview/index.html */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 28px;
+}
+.chip {
+  padding: 8px 14px;
+  border: 1px solid #c9cdcb;
+  background: #f8faf9;
+  border-radius: 20px;
+  font-size: 13px;
+  cursor: pointer;
+  color: #22262b;
+  font-family: inherit;
+}
+.chip:hover {
+  border-color: #2f5fa3;
+}
+.chip.active {
+  background: #1b2430;
+  color: #fff;
+  border-color: #1b2430;
+}
+.chip:focus-visible {
+  outline: 2px solid #2f5fa3;
+  outline-offset: 2px;
 }

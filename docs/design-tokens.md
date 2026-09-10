@@ -1,9 +1,10 @@
 # Design tokens — MixTools
 
 **Fuente de verdad:** `frontend-preview/index.html` (el prototipo ya aprobado
-en la práctica). Estos valores están copiados literal de ahí — no
-reinterpretados. Cuando se porte a React/Tailwind, van directo al
-`tailwind.config.js`, no se "recrean" a ojo.
+en la práctica) para colores y tipografía. Los radios y sombras se
+actualizaron después (ver sección de abajo), calibrados contra los valores
+reales de Ant Design (su token base `radius` es 4px, botones ~6-8px) para
+que se sienta "software moderno" sin volverse un redondeo tipo pastilla.
 
 ## Colores
 
@@ -27,10 +28,15 @@ reinterpretados. Cuando se porte a React/Tailwind, van directo al
 - **Metadatos de archivo** (nombre, tamaño, tipo): IBM Plex Mono — solo
   para eso, no usar monoespaciada en otro lado
 
-## Radios y espaciado
+## Radios y sombras (actualizado)
 
-- `radius`: 3px
-- Sin `box-shadow` decorativo — bordes de 1px, no sombras difusas
+- Botones y chips: `border-radius: 8px`
+- Dropzone y tarjetas de resultado: `border-radius: 6px`
+- Sombra sutil en botones/tarjetas: `box-shadow: 0 1px 2px rgba(27, 36, 48, 0.08)`
+  — apenas perceptible, da sensación de "elevación" sin volverse pesada
+- Las esquinas de registro del dropzone (`.corner`, las marcas en L) NO
+  cambian — son un elemento de identidad aparte, no se redondean ni se
+  quitan, conviven con el `border-radius` del contenedor
 
 ## Reglas de fidelidad
 
