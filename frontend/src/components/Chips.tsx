@@ -12,7 +12,7 @@ interface ChipsProps {
 const CONVERTER_GROUPS = [
   ['pdf-a-jpg', 'jpg-a-pdf'],
   ['office-a-pdf', 'pdf-a-word'],
-  ['split'],
+  ['merge', 'split'],
   ['comprimir'],
 ]
 

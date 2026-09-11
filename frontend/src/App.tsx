@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import Chips from './components/Chips'
 import GenericConversionPanel from './components/GenericConversionPanel'
+import MergePdfsPanel from './components/MergePdfsPanel'
 import PdfToJpgPanel from './components/PdfToJpgPanel'
 import Rail from './components/Rail'
 import { TOOLS } from './lib/tools'
@@ -39,6 +40,7 @@ function App() {
 
         <div className="mt-14 flex justify-center">
           {activeTool === 'converter' && activeUtility === 'pdf-a-jpg' && <PdfToJpgPanel />}
+          {activeTool === 'converter' && activeUtility === 'merge' && <MergePdfsPanel />}
           {activeTool === 'converter' && utility?.conversion && (
             <GenericConversionPanel config={utility.conversion} />
           )}

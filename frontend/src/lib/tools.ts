@@ -102,6 +102,7 @@ export const TOOLS: Tool[] = [
           resultLabel: 'Comprimir PDF',
         },
       },
+      { id: 'merge', label: 'Unir PDF' },
     ],
   },
   {
