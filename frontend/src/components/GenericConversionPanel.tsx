@@ -115,7 +115,7 @@ function GenericConversionPanel({ config }: GenericConversionPanelProps) {
       <div className="mt-[22px] flex items-center gap-4">
         <button
           type="button"
-          className="cursor-pointer rounded-lg bg-blue px-[22px] py-[11px] text-[13.5px] font-semibold text-white shadow-sm hover:bg-blue-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:bg-[#AFC0D6]"
+          className="cursor-pointer rounded-lg bg-teal px-[22px] py-[11px] text-[13.5px] font-semibold text-white shadow-sm hover:bg-teal-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:bg-[#9FCFC1]"
           disabled={files.length === 0 || status === 'uploading'}
           onClick={handleConvert}
         >

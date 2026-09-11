@@ -32,11 +32,11 @@
 }
 .dropzone:hover,
 .dropzone.drag {
-  border-color: #2f5fa3;
+  border-color: #0F6E56;
   background: rgba(47, 95, 163, 0.05);
 }
 .dropzone:focus-visible {
-  outline: 2px solid #2f5fa3;
+  outline: 2px solid #0F6E56;
   outline-offset: 3px;
 }
 .corner {
@@ -131,7 +131,7 @@
 .progress-fill {
   height: 100%;
   width: 0%;
-  background: #2f5fa3;
+  background: #0F6E56;
   transition: width 0.18s linear;
 }
 .progress-fill.indeterminate {
@@ -255,10 +255,10 @@
 .tool-item.active {
   background: #2a3648;
   color: #fff;
-  border-left: 2px solid #2f5fa3;
+  border-left: 2px solid #0F6E56;
 }
 .tool-item:focus-visible {
-  outline: 2px solid #2f5fa3;
+  outline: 2px solid #0F6E56;
   outline-offset: -2px;
 }
 .tool-item:disabled {
@@ -317,28 +317,41 @@
 .chips {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  justify-content: center;
+  align-items: center;
+  gap: 10px;
   margin-bottom: 28px;
 }
+.chips-group {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.chips-divider {
+  width: 1px;
+  height: 26px;
+  background: #c9cdcb;
+  margin: 0 4px;
+}
 .chip {
-  padding: 8px 14px;
+  padding: 10px 20px;
   border: 1px solid #c9cdcb;
   background: #f8faf9;
-  border-radius: 20px;
-  font-size: 13px;
+  border-radius: 10px;
+  font-size: 14px;
   cursor: pointer;
   color: #22262b;
   font-family: inherit;
 }
 .chip:hover {
-  border-color: #2f5fa3;
+  border-color: #0F6E56;
 }
 .chip.active {
-  background: #1b2430;
+  background: #0F6E56;
   color: #fff;
-  border-color: #1b2430;
+  border-color: #0F6E56;
 }
 .chip:focus-visible {
-  outline: 2px solid #2f5fa3;
+  outline: 2px solid #0F6E56;
   outline-offset: 2px;
 }
