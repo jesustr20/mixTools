@@ -112,4 +112,34 @@ describe('App', () => {
       true,
     )
   })
+
+  it('disables Convertir for Unir PDF until 2+ files are added', () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /unir pdf/i }))
+
+    const dropzone = screen.getByRole('button', { name: /uno o varios pdfs/i })
+    fireEvent.drop(dropzone, { dataTransfer: { files: [makePdfFile('a.pdf')] } })
+
+    expect(screen.getByRole('button', { name: /convertir/i })).toBeDisabled()
+  })
+
+  it('sends files to /api/converter/merge in the reordered on-screen order, not upload order', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /unir pdf/i }))
+
+    const dropzone = screen.getByRole('button', { name: /uno o varios pdfs/i })
+    fireEvent.drop(dropzone, {
+      dataTransfer: { files: [makePdfFile('a.pdf'), makePdfFile('b.pdf'), makePdfFile('c.pdf')] },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: 'Bajar a.pdf' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Subir c.pdf' }))
+
+    fireEvent.click(screen.getByRole('button', { name: /convertir/i }))
+
+    await waitFor(() => expect(convertFileMock).toHaveBeenCalledTimes(1))
+    const [, filesArg, multipleArg] = convertFileMock.mock.calls[0]
+    expect(multipleArg).toBe(true)
+    expect((filesArg as File[]).map((f) => f.name)).toEqual(['b.pdf', 'c.pdf', 'a.pdf'])
+  })
 })
