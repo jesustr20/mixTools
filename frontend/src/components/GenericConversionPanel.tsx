@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import Dropzone from './Dropzone'
-import { batchPdfsToJpg, pdfToJpg } from '../lib/api'
+import { convertFile } from '../lib/api'
+import type { ConversionConfig } from '../lib/tools'
 
 type Status = 'idle' | 'uploading' | 'done' | 'error'
 
@@ -14,7 +15,11 @@ function formatSize(bytes: number): string {
   return kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`
 }
 
-function PdfToJpgPanel() {
+interface GenericConversionPanelProps {
+  config: ConversionConfig
+}
+
+function GenericConversionPanel({ config }: GenericConversionPanelProps) {
   const [files, setFiles] = useState<File[]>([])
   const [status, setStatus] = useState<Status>('idle')
   const [result, setResult] = useState<Result | null>(null)
@@ -30,7 +35,14 @@ function PdfToJpgPanel() {
     }
   }, [downloadUrl])
 
-  const handleFiles = (selected: File[]) => {
+  const handleFileSelect = (file: File) => {
+    setFiles([file])
+    setStatus('idle')
+    setResult(null)
+    setError(null)
+  }
+
+  const handleFilesSelect = (selected: File[]) => {
     setFiles((prev) => [...prev, ...selected])
     setStatus('idle')
     setResult(null)
@@ -57,14 +69,8 @@ function PdfToJpgPanel() {
     setResult(null)
     setError(null)
     try {
-      const blob = files.length === 1 ? await pdfToJpg(files[0]) : await batchPdfsToJpg(files)
-      const filename =
-        files.length === 1
-          ? blob.type.includes('zip')
-            ? 'paginas.zip'
-            : 'resultado.jpg'
-          : 'conversion_mixtools.zip'
-      setResult({ blob, filename })
+      const blob = await convertFile(config.endpoint, files, config.multiple)
+      setResult({ blob, filename: config.outputFilename })
       setStatus('done')
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ocurrió un error inesperado.')
@@ -74,7 +80,13 @@ function PdfToJpgPanel() {
 
   return (
     <div className="workbench w-full max-w-[960px] p-10">
-      <Dropzone label="Uno o varios PDFs" accept=".pdf" multiple onFilesSelect={handleFiles} />
+      <Dropzone
+        label={config.label}
+        accept={config.accept}
+        multiple={config.multiple}
+        onFileSelect={handleFileSelect}
+        onFilesSelect={handleFilesSelect}
+      />
 
       {files.length > 0 && (
         <ul className="mt-2.5 flex flex-col gap-2.5">
@@ -133,7 +145,7 @@ function PdfToJpgPanel() {
             <span className="stamp">LISTO</span>
             <div>
               <div className="text-sm font-semibold text-ink">Procesado con tu backend</div>
-              <div className="mt-0.5 text-[12.5px] text-graphite-soft">PDF → JPG</div>
+              <div className="mt-0.5 text-[12.5px] text-graphite-soft">{config.resultLabel}</div>
             </div>
           </div>
           <a
@@ -156,4 +168,4 @@ function PdfToJpgPanel() {
   )
 }
 
-export default PdfToJpgPanel
+export default GenericConversionPanel
