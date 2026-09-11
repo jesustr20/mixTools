@@ -1,8 +1,30 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import {
+  DndContext,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import Dropzone from './Dropzone'
 import { convertFile } from '../lib/api'
+import { reorderById } from '../lib/reorder'
 
 type Status = 'idle' | 'uploading' | 'done' | 'error'
+
+interface FileItem {
+  id: string
+  file: File
+}
 
 interface Result {
   blob: Blob
@@ -14,11 +36,70 @@ function formatSize(bytes: number): string {
   return kb > 1024 ? `${(kb / 1024).toFixed(1)} MB` : `${Math.round(kb)} KB`
 }
 
+interface SortableFileItemProps {
+  item: FileItem
+  onRemove: (id: string) => void
+}
+
+function SortableFileItem({ item, onRemove }: SortableFileItemProps) {
+  const { attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition } =
+    useSortable({ id: item.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  }
+
+  return (
+    <li
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center gap-2.5 rounded-[2px] border border-line bg-paper-raised px-3 py-2.5 text-left"
+    >
+      <button
+        type="button"
+        ref={setActivatorNodeRef}
+        className="cursor-grab touch-none border-none bg-none p-1 text-graphite-soft hover:text-stamp active:cursor-grabbing"
+        aria-label={`Reordenar ${item.file.name}`}
+        {...attributes}
+        {...listeners}
+      >
+        <svg viewBox="0 0 20 20" width="16" height="16" fill="currentColor" aria-hidden="true">
+          <circle cx="7" cy="6" r="1.5" />
+          <circle cx="13" cy="6" r="1.5" />
+          <circle cx="7" cy="10" r="1.5" />
+          <circle cx="13" cy="10" r="1.5" />
+          <circle cx="7" cy="14" r="1.5" />
+          <circle cx="13" cy="14" r="1.5" />
+        </svg>
+      </button>
+      <span className="mono block text-xs text-ink">
+        {item.file.name}
+        <span className="text-[11px] text-graphite-soft"> · {formatSize(item.file.size)}</span>
+      </span>
+      <button
+        type="button"
+        className="ml-auto cursor-pointer border-none bg-none p-1 text-base leading-none text-graphite-soft hover:text-stamp"
+        aria-label={`Quitar ${item.file.name}`}
+        onClick={() => onRemove(item.id)}
+      >
+        &times;
+      </button>
+    </li>
+  )
+}
+
 function MergePdfsPanel() {
-  const [files, setFiles] = useState<File[]>([])
+  const [items, setItems] = useState<FileItem[]>([])
   const [status, setStatus] = useState<Status>('idle')
   const [result, setResult] = useState<Result | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const idRef = useRef(0)
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  )
 
   const downloadUrl = useMemo(
     () => (result ? URL.createObjectURL(result.blob) : ''),
@@ -31,46 +112,51 @@ function MergePdfsPanel() {
   }, [downloadUrl])
 
   const handleFilesSelect = (selected: File[]) => {
-    setFiles((prev) => [...prev, ...selected])
+    const added: FileItem[] = selected.map((file) => ({
+      id: `file-${++idRef.current}`,
+      file,
+    }))
+    setItems((prev) => [...prev, ...added])
     setStatus('idle')
     setResult(null)
     setError(null)
   }
 
-  const removeFile = (index: number) => {
-    setFiles((prev) => prev.filter((_, i) => i !== index))
+  const removeFile = (id: string) => {
+    setItems((prev) => prev.filter((item) => item.id !== id))
     setStatus('idle')
     setResult(null)
     setError(null)
   }
 
-  const moveFile = (index: number, direction: -1 | 1) => {
-    setFiles((prev) => {
-      const target = index + direction
-      if (target < 0 || target >= prev.length) return prev
-      const next = [...prev]
-      ;[next[index], next[target]] = [next[target], next[index]]
-      return next
-    })
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event
+    if (over && active.id !== over.id) {
+      setItems((prev) => reorderById(prev, String(active.id), String(over.id)))
+    }
     setStatus('idle')
     setResult(null)
     setError(null)
   }
 
   const reset = () => {
-    setFiles([])
+    setItems([])
     setStatus('idle')
     setResult(null)
     setError(null)
   }
 
   const handleConvert = async () => {
-    if (files.length < 2) return
+    if (items.length < 2) return
     setStatus('uploading')
     setResult(null)
     setError(null)
     try {
-      const blob = await convertFile('/api/converter/merge', files, true)
+      const blob = await convertFile(
+        '/api/converter/merge',
+        items.map((item) => item.file),
+        true,
+      )
       setResult({ blob, filename: 'unido.pdf' })
       setStatus('done')
     } catch (err) {
@@ -83,55 +169,27 @@ function MergePdfsPanel() {
     <div className="workbench w-full max-w-[960px] p-10">
       <Dropzone label="Uno o varios PDFs" accept=".pdf" multiple onFilesSelect={handleFilesSelect} />
 
-      {files.length > 0 && (
-        <ul className="mt-2.5 flex flex-col gap-2.5">
-          {files.map((file, index) => (
-            <li
-              key={`${file.name}-${index}`}
-              className="flex items-center gap-2.5 rounded-[2px] border border-line bg-paper-raised px-3 py-2.5 text-left"
-            >
-              <span className="mono block text-xs text-ink">
-                {file.name}
-                <span className="text-[11px] text-graphite-soft"> · {formatSize(file.size)}</span>
-              </span>
-              <div className="ml-auto flex items-center gap-1">
-                <button
-                  type="button"
-                  className="cursor-pointer border-none bg-none p-1 text-base leading-none text-graphite-soft hover:text-stamp disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label={`Subir ${file.name}`}
-                  disabled={index === 0}
-                  onClick={() => moveFile(index, -1)}
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  className="cursor-pointer border-none bg-none p-1 text-base leading-none text-graphite-soft hover:text-stamp disabled:cursor-not-allowed disabled:opacity-40"
-                  aria-label={`Bajar ${file.name}`}
-                  disabled={index === files.length - 1}
-                  onClick={() => moveFile(index, 1)}
-                >
-                  ↓
-                </button>
-                <button
-                  type="button"
-                  className="cursor-pointer border-none bg-none p-1 text-base leading-none text-graphite-soft hover:text-stamp"
-                  aria-label={`Quitar ${file.name}`}
-                  onClick={() => removeFile(index)}
-                >
-                  &times;
-                </button>
-              </div>
-            </li>
-          ))}
-        </ul>
+      {items.length > 0 && (
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext items={items.map((item) => item.id)} strategy={verticalListSortingStrategy}>
+            <ul className="mt-2.5 flex flex-col gap-2.5">
+              {items.map((item) => (
+                <SortableFileItem key={item.id} item={item} onRemove={removeFile} />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
       )}
 
       <div className="mt-[22px] flex items-center gap-4">
         <button
           type="button"
           className="cursor-pointer rounded-lg bg-teal px-[22px] py-[11px] text-[13.5px] font-semibold text-white shadow-sm hover:bg-teal-dark focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ink disabled:cursor-not-allowed disabled:bg-[#9FCFC1]"
-          disabled={files.length < 2 || status === 'uploading'}
+          disabled={items.length < 2 || status === 'uploading'}
           onClick={handleConvert}
         >
           Convertir
