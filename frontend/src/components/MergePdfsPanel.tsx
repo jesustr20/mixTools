@@ -59,8 +59,9 @@ function SortableFileItem({ item, onRemove }: SortableFileItemProps) {
       <button
         type="button"
         ref={setActivatorNodeRef}
-        className="cursor-grab touch-none border-none bg-none p-1 text-graphite-soft hover:text-stamp active:cursor-grabbing"
+        className="cursor-grab touch-none rounded-[2px] border-none bg-none p-1.5 text-graphite-soft hover:bg-line/40 hover:text-teal active:cursor-grabbing"
         aria-label={`Reordenar ${item.file.name}`}
+        title="Arrastrá para cambiar el orden"
         {...attributes}
         {...listeners}
       >
