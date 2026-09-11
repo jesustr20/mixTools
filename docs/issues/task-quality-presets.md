@@ -19,10 +19,14 @@ niveles en lenguaje simple (algo como "Estándar" / "Alta calidad" /
 "Máxima compresión"), y cada nivel mapea internamente a valores concretos
 de DPI + calidad JPEG.
 
+## Confirmado técnicamente
+- `pdf_to_jpg()` hoy solo acepta `dpi` (default 150) — llama
+  `pix.save(out_path)` sin ningún control de calidad JPEG.
+- PyMuPDF sí soporta un parámetro `jpg_quality` en `pix.save()` — el
+  cambio es agregar ese argumento, no reescribir la función.
+
 ## Por confirmar antes de poder construirlo (Definición pendiente)
-- Qué tan preparado está `pdf_to_jpg()` en el backend hoy: ¿ya acepta un
-  parámetro de calidad JPEG además de `dpi`, o solo DPI?
-- Qué valores concretos de DPI/calidad corresponden a cada preset
+- Qué valores concretos de DPI/`jpg_quality` corresponden a cada preset
 - Si aplica solo a PDF→JPG, o también tiene sentido para "Comprimir"
   (utilidad ya planificada en #28) — evaluar compartir el mismo patrón de
   presets entre las dos en vez de duplicar diseño
