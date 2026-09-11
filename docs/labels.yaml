@@ -49,6 +49,9 @@ labels:
     description: "Repo, CI/CD, tooling, agentes"
 
   # --- Estado de los gates del Rail (ver docs de metodología) ---
+  - name: "gate:definicion-pendiente"
+    color: "FBCA04"
+    description: "Falta terminar de especificar antes de pasar a Crítica"
   - name: "gate:critica-pendiente"
     color: "FBCA04"
     description: "Falta que la otra persona lea y tire problemas"
