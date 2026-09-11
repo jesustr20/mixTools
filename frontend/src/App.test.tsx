@@ -1,15 +1,17 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
-import { batchPdfsToJpg, pdfToJpg } from './lib/api'
+import { batchPdfsToJpg, convertFile, pdfToJpg } from './lib/api'
 
 vi.mock('./lib/api', () => ({
   pdfToJpg: vi.fn(),
   batchPdfsToJpg: vi.fn(),
+  convertFile: vi.fn(),
 }))
 
 const pdfToJpgMock = vi.mocked(pdfToJpg)
 const batchPdfsToJpgMock = vi.mocked(batchPdfsToJpg)
+const convertFileMock = vi.mocked(convertFile)
 
 function makePdfFile(name: string): File {
   return new File(['%PDF-1.4 fake'], name, { type: 'application/pdf' })
@@ -22,8 +24,10 @@ function getDropzone(): HTMLElement {
 beforeEach(() => {
   pdfToJpgMock.mockReset()
   batchPdfsToJpgMock.mockReset()
+  convertFileMock.mockReset()
   pdfToJpgMock.mockResolvedValue(new Blob(['jpeg'], { type: 'image/jpeg' }))
   batchPdfsToJpgMock.mockResolvedValue(new Blob(['zip'], { type: 'application/zip' }))
+  convertFileMock.mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' }))
   URL.createObjectURL = vi.fn(() => 'blob:mock-url')
   URL.revokeObjectURL = vi.fn()
 })
@@ -69,5 +73,43 @@ describe('App', () => {
 
     await waitFor(() => expect(batchPdfsToJpgMock).toHaveBeenCalledTimes(1))
     expect(pdfToJpgMock).not.toHaveBeenCalled()
+  })
+
+  it('renders GenericConversionPanel for a single-file utility and routes to convertFile', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /pdf → word/i }))
+
+    const dropzone = screen.getByRole('button', { name: /un pdf/i })
+    fireEvent.drop(dropzone, { dataTransfer: { files: [makePdfFile('a.pdf')] } })
+
+    fireEvent.click(screen.getByRole('button', { name: /convertir/i }))
+
+    await waitFor(() => expect(convertFileMock).toHaveBeenCalledTimes(1))
+    expect(convertFileMock).toHaveBeenCalledWith(
+      '/api/converter/pdf-a-word',
+      expect.any(Array),
+      false,
+    )
+  })
+
+  it('routes a multi-file utility (JPG → PDF) to convertFile with multiple=true', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /jpg → pdf/i }))
+
+    const dropzone = screen.getByRole('button', { name: /una o varias imágenes/i })
+    fireEvent.drop(dropzone, {
+      dataTransfer: {
+        files: [makePdfFile('a.jpg'), makePdfFile('b.png')],
+      },
+    })
+
+    fireEvent.click(screen.getByRole('button', { name: /convertir/i }))
+
+    await waitFor(() => expect(convertFileMock).toHaveBeenCalledTimes(1))
+    expect(convertFileMock).toHaveBeenCalledWith(
+      '/api/converter/jpg-a-pdf',
+      expect.any(Array),
+      true,
+    )
   })
 })

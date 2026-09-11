@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import Chips from './components/Chips'
+import GenericConversionPanel from './components/GenericConversionPanel'
 import PdfToJpgPanel from './components/PdfToJpgPanel'
 import Rail from './components/Rail'
 import { TOOLS } from './lib/tools'
@@ -10,6 +11,8 @@ function App() {
   const [activeUtility, setActiveUtility] = useState('pdf-a-jpg')
 
   const tool = TOOLS.find((t) => t.id === activeTool) ?? TOOLS[0]
+
+  const utility = tool.utilities.find((u) => u.id === activeUtility)
 
   const handleSelectTool = (id: ToolId) => {
     const next = TOOLS.find((t) => t.id === id)
@@ -36,6 +39,9 @@ function App() {
 
         <div className="mt-14 flex justify-center">
           {activeTool === 'converter' && activeUtility === 'pdf-a-jpg' && <PdfToJpgPanel />}
+          {activeTool === 'converter' && utility?.conversion && (
+            <GenericConversionPanel config={utility.conversion} />
+          )}
         </div>
       </main>
     </div>

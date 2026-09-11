@@ -45,6 +45,42 @@ export async function pdfToJpg(file: File, dpi?: number): Promise<Blob> {
 }
 
 /**
+ * Utilidad de conversión genérica.
+ * POST multipart/form-data a `${API_BASE}${endpoint}`. El nombre del campo
+ * depende del endpoint (ver `converter/router.py`): los endpoints multi-archivo
+ * (`/jpg-a-pdf`) reciben el campo "files"; los de un solo archivo ("/office-a-pdf",
+ * "/pdf-a-word", "/split", "/comprimir") reciben "file". Devuelve el resultado
+ * como Blob.
+ */
+export async function convertFile(
+  endpoint: string,
+  files: File[],
+  multiple: boolean,
+): Promise<Blob> {
+  const form = new FormData()
+  const field = multiple ? 'files' : 'file'
+  for (const file of files) {
+    form.append(field, file)
+  }
+
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      body: form,
+    })
+  } catch {
+    throw new Error('No se pudo conectar con el backend. ¿Está corriendo en localhost:8000?')
+  }
+
+  if (!response.ok) {
+    throw new Error(await readError(response))
+  }
+
+  return response.blob()
+}
+
+/**
  * Varios PDFs → un ZIP organizado.
  * Envía múltiples .pdf como multipart/form-data (campo "files", repetido) y
  * devuelve `conversion_mixtools.zip` como Blob.
