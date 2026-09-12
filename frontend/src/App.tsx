@@ -41,7 +41,7 @@ function App() {
         <div className="mt-14 flex justify-center">
           {activeTool === 'converter' && activeUtility === 'pdf-a-jpg' && <PdfToJpgPanel />}
           {activeTool === 'converter' && activeUtility === 'merge' && <MergePdfsPanel />}
-          {activeTool === 'converter' && utility?.conversion && (
+          {utility?.conversion && (
             <GenericConversionPanel config={utility.conversion} />
           )}
         </div>
