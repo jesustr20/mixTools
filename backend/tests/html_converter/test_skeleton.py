@@ -61,6 +61,7 @@ def test_apply_skeleton_returns_model_content(monkeypatch):
     assert ".cabecera" in system_prompt
     assert ".contenido" in system_prompt
     assert "reformules" in system_prompt  # regla de fidelidad explícita en el prompt
+    assert "NUNCA agregues <!DOCTYPE>" in system_prompt  # refuerzo contra el bug #59
 
 
 def test_apply_skeleton_preserves_visible_text(monkeypatch):
@@ -83,6 +84,23 @@ def test_apply_skeleton_rejects_altered_text(monkeypatch):
         "post",
         lambda *a, **k: _ok_response(_wrap_in_skeleton("<p>contenido MEJORADO</p>")),
     )
+
+    result = apply_skeleton_and_verify(ORIGINAL)
+
+    assert result == ORIGINAL
+
+
+def test_apply_skeleton_rejects_document_wrapper(monkeypatch):
+    """Issue #59: el wrapper DOCTYPE/html/head/body debe rechazarse aunque el
+    texto visible coincida (la fidelidad textual no lo detecta)."""
+    wrapped = (
+        "<!DOCTYPE html><html><head><title>x</title></head><body>"
+        + _wrap_in_skeleton("<p>contenido</p>")
+        + "</body></html>"
+    )
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(wrapped))
 
     result = apply_skeleton_and_verify(ORIGINAL)
 
