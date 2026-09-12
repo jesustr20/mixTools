@@ -409,6 +409,7 @@ source = { editable = "." }
 dependencies = [
     { name = "beautifulsoup4" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "img2pdf" },
     { name = "lxml" },
     { name = "mammoth" },
@@ -423,7 +424,6 @@ dependencies = [
 
 [package.dev-dependencies]
 dev = [
-    { name = "httpx" },
     { name = "pytest" },
     { name = "ruff" },
 ]
@@ -432,6 +432,7 @@ dev = [
 requires-dist = [
     { name = "beautifulsoup4" },
     { name = "fastapi" },
+    { name = "httpx" },
     { name = "img2pdf" },
     { name = "lxml" },
     { name = "mammoth" },
@@ -446,7 +447,6 @@ requires-dist = [
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "httpx" },
     { name = "pytest" },
     { name = "ruff" },
 ]
