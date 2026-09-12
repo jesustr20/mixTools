@@ -296,3 +296,62 @@ def test_convertir_degrades_without_key(tmp_path: Path, monkeypatch):
     html = response.json()["html"]
     assert "Hola MixTools" in html
     assert "cuerpo-texto" not in html  # sin clave: degrada a la salida de Etapa 1
+
+
+def test_etapa1_returns_stage1_html(tmp_path: Path):
+    docx = _make_docx(tmp_path / "documento.docx")
+
+    client = TestClient(app)
+    with open(docx, "rb") as f:
+        response = client.post(
+            "/api/html-converter/etapa1",
+            files={"file": ("documento.docx", f, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            auth=AUTH,
+        )
+
+    assert response.status_code == 200
+    html = response.json()["html"]
+    assert "Hola MixTools" in html
+    assert "cuerpo-texto" not in html  # Etapa 1 no aplica esqueleto ni IA
+
+
+def test_etapa1_rejects_non_docx(tmp_path: Path):
+    client = TestClient(app)
+    response = client.post(
+        "/api/html-converter/etapa1",
+        files={"file": ("notadocx.txt", io.BytesIO(b"hola"), "text/plain")},
+        auth=AUTH,
+    )
+
+    assert response.status_code == 400
+
+
+def test_etapa2_returns_json(tmp_path: Path, monkeypatch):
+    _mock_deepseek_pipeline(monkeypatch)
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/html-converter/etapa2",
+        json={"html": "<p>etapa1 output</p>"},
+        auth=AUTH,
+    )
+
+    assert response.status_code == 200
+    # con el mock, enhance_tables_with_ai devuelve el HTML de entrada sin cambios
+    assert response.json()["html"] == "<p>etapa1 output</p>"
+
+
+def test_etapa3_returns_skeleton_json(tmp_path: Path, monkeypatch):
+    _mock_deepseek_pipeline(monkeypatch)
+
+    client = TestClient(app)
+    response = client.post(
+        "/api/html-converter/etapa3",
+        json={"html": "<p>etapa2 output</p>"},
+        auth=AUTH,
+    )
+
+    assert response.status_code == 200
+    html = response.json()["html"]
+    assert "cuerpo-texto" in html
+    assert "<p>etapa2 output</p>" in html
