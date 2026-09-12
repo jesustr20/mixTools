@@ -12,6 +12,8 @@ romper la conversión completa.
 """
 import logging
 import os
+import re
+from html import unescape
 from pathlib import Path
 
 import httpx
@@ -223,6 +225,11 @@ _SKELETON_PROMPT = (
     "- El contenido recibido va DENTRO de <td class=\"cuerpo-texto\">, exactamente "
     "igual: no borres, no reescribas, no cambies colores/valores/estructura del "
     "contenido (fidelidad total — solo agregás el envoltorio).\n"
+    "- REGLA DE FIDELIDAD CRÍTICA: el texto visible del contenido debe quedar "
+    "idéntico carácter por carácter al texto de entrada. Solo podés cambiar la "
+    "estructura/wrapping HTML (tags, clases, anidamiento) alrededor del texto; "
+    "jamás reformules, mejores ni alteres el texto real. Si cambiás una sola "
+    "letra, el resultado es inválido.\n"
     "- El <style> de la plantilla va tal cual. Podés agregar reglas o clases CSS "
     "nuevas si hace falta para que la estructura no quede engorrosa, pero NO "
     "renombres ni elimines las clases ya reconocidas (.ajusTabla, .firmas, "
@@ -235,6 +242,29 @@ _SKELETON_PROMPT = (
     "PLANTILLA DE ESQUELETO:\n"
     + _SKELETON_TEMPLATE
 )
+
+_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+_STYLE_RE = re.compile(r"<style[^>]*>.*?</style>", re.DOTALL | re.IGNORECASE)
+_SCRIPT_RE = re.compile(r"<script[^>]*>.*?</script>", re.DOTALL | re.IGNORECASE)
+_TAG_RE = re.compile(r"<[^>]*>")
+_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def _normalize_visible_text(html: str) -> str:
+    """Texto visible normalizado (sin tags/comentarios/style, whitespace colapsado).
+
+    Útil para verificar la regla de fidelidad textual: el esqueleto agrega solo
+    estructura (tags, clases) y whitespace/comentarios, que acá se descartan,
+    así que comparar el texto normalizado de entrada vs salida detecta si la IA
+    reformuló o alteró el contenido.
+    """
+    text = _COMMENT_RE.sub("", html)
+    text = _STYLE_RE.sub("", text)
+    text = _SCRIPT_RE.sub("", text)
+    text = _TAG_RE.sub("", text)
+    text = unescape(text)
+    text = text.replace("\xa0", " ")
+    return _WHITESPACE_RE.sub(" ", text).strip()
 
 
 def _deepseek_chat(system_content: str, user_content: str) -> str | None:
@@ -284,11 +314,20 @@ def enhance_tables_with_ai(html: str) -> str:
 def apply_skeleton_and_verify(html: str) -> str:
     """Envuelve el HTML en el esqueleto fijo y verifica fidelidad (DeepSeek).
 
-    Degrada con gracia: si falta la clave o la llamada falla, devuelve `html`
-    sin el esqueleto, sin romper la conversión.
+    Degrada con gracia: si falta la clave, la llamada falla, o la salida del
+    modelo alteró el texto visible del contenido, devuelve `html` sin el
+    esqueleto, sin romper la conversión.
     """
     result = _deepseek_chat(_SKELETON_PROMPT, html)
-    return result if result is not None else html
+    if result is None:
+        return html
+    if _normalize_visible_text(result) != _normalize_visible_text(html):
+        logger.warning(
+            "DeepSeek alteró el texto del contenido; se descarta su salida y se "
+            "devuelve el HTML sin esqueleto."
+        )
+        return html
+    return result
 
 
 def word_to_html_full_pipeline(docx_path: Path) -> str:
