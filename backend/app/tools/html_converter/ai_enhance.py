@@ -12,6 +12,7 @@ romper la conversión completa.
 """
 import logging
 import os
+import re
 
 import httpx
 
@@ -108,6 +109,25 @@ _SYSTEM_APPENDIX = (
     "table corrections applied."
 )
 
+# Refuerzo explícito contra el bug #47: el modelo a veces copia el <style> de
+# ejemplo del prompt y envuelve todo en un documento completo. Esto va ANTES de
+# la explicación larga para que no quede enterrado.
+_OUTPUT_FORMAT_INSTRUCTION = (
+    "IMPORTANT — OUTPUT FORMAT: Your output must contain ONLY the content-level "
+    "HTML tags (p, table, colgroup, tr, td, etc.) — the exact same tags that were "
+    "in the input. NEVER add <!DOCTYPE>, <html>, <head>, <body>, <title>, or any "
+    "top-level document wrapper. NEVER copy the <style> block shown in the "
+    "formatting examples below into your output — those examples are "
+    "reference/context only, describing conventions, not literal content to insert.\n\n"
+)
+
+_WRAPPER_RE = re.compile(r"<!doctype|<html\b|<head\b|<body\b|<title\b|<style\b", re.IGNORECASE)
+
+
+def _has_document_wrapper(html: str) -> bool:
+    """True si la salida incluye un wrapper de documento completo (bug #47)."""
+    return bool(_WRAPPER_RE.search(html))
+
 
 def enhance_tables_with_ai(html: str) -> str:
     """Corrige tablas complejas con DeepSeek; degrada a `html` si algo falla."""
@@ -118,10 +138,11 @@ def enhance_tables_with_ai(html: str) -> str:
         )
         return html
 
+    system_prompt = _OUTPUT_FORMAT_INSTRUCTION + _TABLE_PROMPT + "\n\n" + _SYSTEM_APPENDIX
     payload = {
         "model": DEEPSEEK_MODEL,
         "messages": [
-            {"role": "system", "content": _TABLE_PROMPT + "\n\n" + _SYSTEM_APPENDIX},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": html},
         ],
         "stream": False,
@@ -145,5 +166,11 @@ def enhance_tables_with_ai(html: str) -> str:
         return html
 
     if isinstance(content, str) and content.strip():
+        if _has_document_wrapper(content):
+            logger.warning(
+                "DeepSeek envolvió la salida en un documento completo "
+                "(DOCTYPE/html/head/body); se descarta y se devuelve el HTML sin corregir."
+            )
+            return html
         return content
     return html
