@@ -12,8 +12,11 @@ romper la conversión completa.
 """
 import logging
 import os
+from pathlib import Path
 
 import httpx
+
+from app.tools.html_converter.structure import docx_to_html
 
 logger = logging.getLogger(__name__)
 
@@ -108,21 +111,144 @@ _SYSTEM_APPENDIX = (
     "table corrections applied."
 )
 
+# Esqueleto de salida fijo confirmado como bueno (Ficha de Actualización de
+# Datos / Convenio de Separación). Las imágenes de cabecera/pie se agregan por
+# proyecto más adelante; acá van como placeholders vacíos.
+_SKELETON_TEMPLATE = """<style type="text/css">@page {
+    margin: 0;
+  }
+  body{
+    font-family: 'Arial';
+  	font-size: 11pt;
+    margin: 0;
+    padding: 0.5cm 1.53cm;
+  }
+  div, p, li{
+    text-align: justify;
+  }
+  table, thead, tbody
+  {
+    vertical-align: top;
+    border-collapse: collapse;
+    box-sizing: border-box;
+  }
+  .firmas {
+    border-top: 1px dotted #000;
+  }
+  .ajusTabla {
+    font-size: 0.8em;
+    text-align: center;
+  }
+  .contenido{
+    z-index: 1;
+  }
+  .cabecera{
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
+  .pie_pagina{
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
+  .img_cabecera{
+    width: 100%;
+    display: block;
+  }
+  .img_pie_pagina{
+    width: 100%;
+    display: block;
+  }
+  .cuerpo-texto{}
+  @media screen{
+    .cabecera, .pie_pagina{
+      position: initial;
+  	}
+    .espacio-cabecera, .espacio-pie{
+      height: 0;
+    }
+  }
+  @media print{
+    .cabecera{
+      position: fixed;
+  	}
+    .pie_pagina{
+      position: fixed;
+    }
+    .espacio-cabecera{
+      height: 2.3cm;
+    }
+    .espacio-pie{
+      height: 0.5cm;
+    }
+  }
+</style>
+<div class="cabecera">
+  <!-- banner image goes here later, per-project -->
+</div>
+<table class="contenido" style="font-size: 10pt;" width="100%">
+	<thead>
+		<tr class="espacio-cabecera">
+			<td> </td>
+		</tr>
+	</thead>
+	<tfoot>
+		<tr>
+			<td>
+			<div class="espacio-pie" style="height: 35px; background-color: white"> </div>
+			</td>
+		</tr>
+		<tr><td> </td></tr>
+		<tr><td> </td></tr>
+	</tfoot>
+	<tbody>
+		<tr>
+			<td class="cuerpo-texto">
+			<!-- content goes here, unchanged -->
+			</td>
+		</tr>
+	</tbody>
+</table>
+<div class="pie_pagina">
+  <!-- footer image goes here later, per-project -->
+</div>"""
 
-def enhance_tables_with_ai(html: str) -> str:
-    """Corrige tablas complejas con DeepSeek; degrada a `html` si algo falla."""
+_SKELETON_PROMPT = (
+    "Vas a recibir el HTML del cuerpo de un documento (ya convertido y corregido). "
+    "Envuélvelo en el esqueleto de salida fijo que aparece abajo como plantilla "
+    "canónica, cumpliendo estas reglas:\n"
+    "- El contenido recibido va DENTRO de <td class=\"cuerpo-texto\">, exactamente "
+    "igual: no borres, no reescribas, no cambies colores/valores/estructura del "
+    "contenido (fidelidad total — solo agregás el envoltorio).\n"
+    "- El <style> de la plantilla va tal cual. Podés agregar reglas o clases CSS "
+    "nuevas si hace falta para que la estructura no quede engorrosa, pero NO "
+    "renombres ni elimines las clases ya reconocidas (.ajusTabla, .firmas, "
+    ".contenido, .cabecera, .pie_pagina, .cuerpo-texto, .espacio-cabecera, "
+    ".espacio-pie, .img_cabecera, .img_pie_pagina).\n"
+    "- .cabecera y .pie_pagina quedan como divs placeholder VACÍOS, sin <img src> "
+    "todavía (el banner y el pie se rellenan por proyecto después).\n"
+    "- Devuelve el documento HTML completo (con su <style> y la estructura "
+    "thead/tfoot/tbody), con el contenido dentro de .cuerpo-texto.\n\n"
+    "PLANTILLA DE ESQUELETO:\n"
+    + _SKELETON_TEMPLATE
+)
+
+
+def _deepseek_chat(system_content: str, user_content: str) -> str | None:
+    """POST a DeepSeek y devuelve el content del modelo, o None si falla."""
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
-        logger.warning(
-            "DEEPSEEK_API_KEY no está configurada; se devuelve el HTML sin corregir."
-        )
-        return html
+        logger.warning("DEEPSEEK_API_KEY no está configurada; se omite la pasada de IA.")
+        return None
 
     payload = {
         "model": DEEPSEEK_MODEL,
         "messages": [
-            {"role": "system", "content": _TABLE_PROMPT + "\n\n" + _SYSTEM_APPENDIX},
-            {"role": "user", "content": html},
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": user_content},
         ],
         "stream": False,
     }
@@ -141,9 +267,32 @@ def enhance_tables_with_ai(html: str) -> str:
         response.raise_for_status()
         content = response.json()["choices"][0]["message"]["content"]
     except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
-        logger.warning("Falló la corrección de tablas con DeepSeek: %s", exc)
-        return html
+        logger.warning("Falló la llamada a DeepSeek: %s", exc)
+        return None
 
     if isinstance(content, str) and content.strip():
         return content
-    return html
+    return None
+
+
+def enhance_tables_with_ai(html: str) -> str:
+    """Corrige tablas complejas con DeepSeek; degrada a `html` si algo falla."""
+    result = _deepseek_chat(_TABLE_PROMPT + "\n\n" + _SYSTEM_APPENDIX, html)
+    return result if result is not None else html
+
+
+def apply_skeleton_and_verify(html: str) -> str:
+    """Envuelve el HTML en el esqueleto fijo y verifica fidelidad (DeepSeek).
+
+    Degrada con gracia: si falta la clave o la llamada falla, devuelve `html`
+    sin el esqueleto, sin romper la conversión.
+    """
+    result = _deepseek_chat(_SKELETON_PROMPT, html)
+    return result if result is not None else html
+
+
+def word_to_html_full_pipeline(docx_path: Path) -> str:
+    """Pipeline completo: Etapa 1 → Etapa 2 → Etapa 3, en orden."""
+    stage1 = docx_to_html(docx_path)
+    stage2 = enhance_tables_with_ai(stage1)
+    return apply_skeleton_and_verify(stage2)
