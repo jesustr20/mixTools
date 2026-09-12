@@ -16,13 +16,13 @@ dependencies = [
     "lxml",
     "python-docx",
     "openpyxl",
+    "httpx",
 ]
 
 [dependency-groups]
 dev = [
     "ruff",
     "pytest",
-    "httpx",
 ]
 
 [tool.ruff.lint]
