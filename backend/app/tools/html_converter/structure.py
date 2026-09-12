@@ -220,7 +220,15 @@ def _parse_run(r_elem) -> Run:
     if r_pr is not None:
         bold = r_pr.find(qn("w:b")) is not None
         italic = r_pr.find(qn("w:i")) is not None
-        underline = r_pr.find(qn("w:u")) is not None
+        u_el = r_pr.find(qn("w:u"))
+        # Word escribe <w:u> en casi todos los runs; sin subrayado real usa
+        # <w:u w:val="none"/>. Solo hay subrayado si w:val lo indica (issue #58).
+        underline = u_el is not None and u_el.get(qn("w:val")) not in (
+            None,
+            "none",
+            "0",
+            "false",
+        )
 
     return Run(text="".join(parts), bold=bold, italic=italic, underline=underline)
 
