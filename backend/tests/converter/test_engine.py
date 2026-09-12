@@ -1,8 +1,12 @@
 """Tests de la lógica pura del Conversor (solo pdf_to_jpg, walking skeleton)."""
+import threading
+import time
 import zipfile
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pymupdf as fitz
+from docx import Document
 
 from app.tools.converter import engine
 
@@ -149,3 +153,49 @@ def test_batch_duplicate_names_three_pdfs_ordered(tmp_path: Path):
 
     with zipfile.ZipFile(zip_path) as zf:
         assert zf.namelist() == ["recibo.jpg", "recibo (1).jpg", "recibo (2).jpg"]
+
+
+def _make_docx(path: Path) -> Path:
+    """Genera un .docx real mínimo con python-docx."""
+    doc = Document()
+    doc.add_paragraph("Hola MixTools")
+    doc.save(str(path))
+    return path
+
+
+def test_office_to_pdf_limits_concurrent_soffice_calls(tmp_path: Path, monkeypatch):
+    """El semáforo debe impedir más de 3 procesos de soffice a la vez."""
+    docx_path = _make_docx(tmp_path / "concurrencia.docx")
+    out_dirs = []
+    for i in range(5):
+        d = tmp_path / f"out{i}"
+        d.mkdir()
+        out_dirs.append(d)
+
+    counter_lock = threading.Lock()
+    state = {"active": 0, "max_active": 0}
+
+    real_run = engine.subprocess.run
+
+    def tracked_run(*args, **kwargs):
+        with counter_lock:
+            state["active"] += 1
+            state["max_active"] = max(state["max_active"], state["active"])
+        try:
+            time.sleep(0.5)
+            return real_run(*args, **kwargs)
+        finally:
+            with counter_lock:
+                state["active"] -= 1
+
+    monkeypatch.setattr(engine.subprocess, "run", tracked_run)
+
+    with ThreadPoolExecutor(max_workers=5) as ex:
+        futures = [
+            ex.submit(engine.office_to_pdf, docx_path, out_dirs[i]) for i in range(5)
+        ]
+        results = [f.result(timeout=120) for f in futures]
+
+    assert all(r.exists() for r in results)
+    assert state["max_active"] <= 3
+    assert state["max_active"] >= 3

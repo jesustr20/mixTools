@@ -3,8 +3,10 @@ Motor de conversiones. Cada función es pura: recibe rutas, devuelve rutas.
 Nada de FastAPI aquí -> se puede probar y reusar desde CLI, tests, etc.
 """
 import os
+import shutil
 import subprocess
 import tempfile
+import threading
 import zipfile
 from pathlib import Path
 
@@ -96,21 +98,39 @@ def images_to_pdf(image_paths: list[Path], out_path: Path) -> Path:
 # ---------------------------------------------------------------------------
 # Office (Word/Excel/PowerPoint) -> PDF  (vía LibreOffice headless)
 # ---------------------------------------------------------------------------
+# Cada proceso de soffice es pesado en memoria. Sin límite, varios usuarios
+# convirtiendo a la vez pueden agotar la RAM del servidor (issue #35).
+# El semáforo vive en memoria del propio proceso: suficiente para una sola
+# instancia de backend sirviendo a un equipo de este tamaño.
+office_semaphore = threading.Semaphore(3)
+
+
 def office_to_pdf(input_path: Path, out_dir: Path) -> Path:
     """
     Convierte docx/xlsx/pptx (y variantes .doc/.xls/.ppt) a PDF usando
     LibreOffice en modo headless. Es el mismo mecanismo que usan
     iLovePDF/Smallpdf por debajo.
     """
+    # Cada invocación usa un perfil de usuario único: si varias comparten el
+    # mismo perfil (el HOME de _subprocess_env), la primera lo bloquea y el
+    # resto falla con returncode=1 sin error visible. El semáforo limita
+    # cuántas corren a la vez; el perfil único evita que las que corren choquen.
+    profile_dir = Path(tempfile.mkdtemp(prefix="lo_profile_"))
     cmd = [
         "soffice", "--headless", "--norestore",
+        f"-env:UserInstallation=file://{profile_dir}",
         "--convert-to", "pdf",
         "--outdir", str(out_dir),
         str(input_path),
     ]
-    result = subprocess.run(
-        cmd, capture_output=True, text=True, timeout=120, env=_subprocess_env(), check=False
-    )
+    try:
+        with office_semaphore:
+            result = subprocess.run(
+                cmd, capture_output=True, text=True, timeout=120, env=_subprocess_env(), check=False
+            )
+    finally:
+        shutil.rmtree(profile_dir, ignore_errors=True)
+
     if result.returncode != 0:
         raise RuntimeError(f"LibreOffice falló: {result.stderr}")
 
