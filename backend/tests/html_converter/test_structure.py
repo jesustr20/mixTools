@@ -196,3 +196,28 @@ def test_no_nbsp_in_output(tmp_path: Path):
 
     assert "\xa0" not in html
     assert "&nbsp;" not in html
+
+
+# ---------------------------------------------------------------------------
+# Subrayado (issue #58): el w:val de <w:u> decide, no su presencia
+# ---------------------------------------------------------------------------
+def test_underline_detection_uses_w_val(tmp_path: Path):
+    """w:val="none" y la ausencia de <w:u> no deben dar <u>; solo single sí."""
+    doc = Document()
+    doc.add_paragraph("sin etiqueta w:u")  # nunca se toca underline → sin <w:u>
+
+    p_none = doc.add_paragraph()
+    r_none = p_none.add_run("val none")
+    r_none.underline = False  # Word escribe <w:u w:val="none"/>
+
+    p_single = doc.add_paragraph()
+    r_single = p_single.add_run("val single")
+    r_single.underline = True  # <w:u w:val="single"/>
+
+    path = _save(doc, tmp_path, "underline.docx")
+
+    html = docx_to_html(path)
+
+    assert "<p>sin etiqueta w:u</p>" in html
+    assert "<p>val none</p>" in html
+    assert "<p><u>val single</u></p>" in html
