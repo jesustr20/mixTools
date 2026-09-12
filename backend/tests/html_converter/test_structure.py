@@ -221,3 +221,46 @@ def test_underline_detection_uses_w_val(tmp_path: Path):
     assert "<p>sin etiqueta w:u</p>" in html
     assert "<p>val none</p>" in html
     assert "<p><u>val single</u></p>" in html
+
+
+# ---------------------------------------------------------------------------
+# Negrita e itálica (issue #62): el w:val de <w:b>/<w:i> decide, no su presencia
+# ---------------------------------------------------------------------------
+def test_bold_detection_uses_w_val(tmp_path: Path):
+    """w:val="0" y la ausencia de <w:b> no deben dar <strong>; bare sí."""
+    doc = Document()
+    doc.add_paragraph("sin etiqueta w:b")  # nunca se toca bold → sin <w:b>
+
+    p_off = doc.add_paragraph()
+    p_off.add_run("val 0").bold = False  # <w:b w:val="0"/>
+
+    p_on = doc.add_paragraph()
+    p_on.add_run("bare").bold = True  # <w:b/> (sin w:val)
+
+    path = _save(doc, tmp_path, "bold.docx")
+
+    html = docx_to_html(path)
+
+    assert "<p>sin etiqueta w:b</p>" in html
+    assert "<p>val 0</p>" in html
+    assert "<p><strong>bare</strong></p>" in html
+
+
+def test_italic_detection_uses_w_val(tmp_path: Path):
+    """w:val="0" y la ausencia de <w:i> no deben dar <em>; bare sí."""
+    doc = Document()
+    doc.add_paragraph("sin etiqueta w:i")  # nunca se toca italic → sin <w:i>
+
+    p_off = doc.add_paragraph()
+    p_off.add_run("val 0").italic = False  # <w:i w:val="0"/>
+
+    p_on = doc.add_paragraph()
+    p_on.add_run("bare").italic = True  # <w:i/> (sin w:val)
+
+    path = _save(doc, tmp_path, "italic.docx")
+
+    html = docx_to_html(path)
+
+    assert "<p>sin etiqueta w:i</p>" in html
+    assert "<p>val 0</p>" in html
+    assert "<p><em>bare</em></p>" in html

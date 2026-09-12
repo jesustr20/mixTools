@@ -218,19 +218,26 @@ def _parse_run(r_elem) -> Run:
     r_pr = r_elem.find(qn("w:rPr"))
     bold = italic = underline = False
     if r_pr is not None:
-        bold = r_pr.find(qn("w:b")) is not None
-        italic = r_pr.find(qn("w:i")) is not None
-        u_el = r_pr.find(qn("w:u"))
-        # Word escribe <w:u> en casi todos los runs; sin subrayado real usa
-        # <w:u w:val="none"/>. Solo hay subrayado si w:val lo indica (issue #58).
-        underline = u_el is not None and u_el.get(qn("w:val")) not in (
-            None,
-            "none",
-            "0",
-            "false",
-        )
+        bold = _is_flag_active(r_pr, "w:b")
+        italic = _is_flag_active(r_pr, "w:i")
+        underline = _is_flag_active(r_pr, "w:u")
 
     return Run(text="".join(parts), bold=bold, italic=italic, underline=underline)
+
+
+def _is_flag_active(r_pr, tag_name: str) -> bool:
+    """True si la propiedad de run `tag_name` está activa, mirando su w:val.
+
+    Word escribe <w:b>/<w:i>/<w:u> con un w:val explícito incluso para
+    desactivarlos: negrita e itálica usan "0"/"false" (inactivo) y "1"/"true" o
+    elemento sin w:val (activo); subrayado usa "none" (inactivo) y cualquier
+    estilo, p. ej. "single" (activo). La ausencia del elemento o un w:val que
+    desactiva explícitamente dan False (issues #58 y #62).
+    """
+    el = r_pr.find(qn(tag_name))
+    if el is None:
+        return False
+    return el.get(qn("w:val")) not in ("0", "false", "none")
 
 
 def _parse_table(tbl_elem, theme_colors: dict[str, str]) -> Table:
