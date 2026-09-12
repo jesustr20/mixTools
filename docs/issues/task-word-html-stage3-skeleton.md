@@ -19,6 +19,15 @@ HTML ya corregido de la Etapa 2 y:
    ya visto, puede resolver con criterio
 
 ## Confirmado (de #7 y conversación con Jesús)
+- **Regla de fidelidad textual (crítica)**: el texto fijo (todo lo que NO
+  se convierte a Liquid) debe quedar **exactamente igual, carácter por
+  carácter**, al original — solo puede cambiar la estructura HTML
+  (etiquetas, clases, envoltorios), nunca el contenido textual en sí. Esto
+  habilita que el futuro módulo Comparador (epic-comparator) pueda
+  comparar el resultado final contra el original sin falsos positivos por
+  texto "mejorado" por la IA. Esta regla aplica también retroactivamente
+  como principio para la Etapa 2 (ya mergeada) — no se reabre ese PR, pero
+  queda documentado como criterio para cualquier ajuste futuro.
 - Sin Liquid todavía — eso es la Etapa 4, separada a propósito (más fácil
   debuggear cada pieza sola: si algo sale mal, se sabe si fue el esqueleto
   o fue Liquid)

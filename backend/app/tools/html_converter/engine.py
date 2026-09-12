@@ -22,6 +22,13 @@ JUNK_INLINE_STYLE_PATTERNS = [
 EMPTY_TAGS_TO_UNWRAP = {"span"}  # spans vacíos o sin atributos útiles se eliminan
 
 
+# TODO: retirar `word_to_clean_html` / `word_to_clean_html_file` (motor viejo de
+# mammoth) una vez que el pipeline nuevo (structure.docx_to_html →
+# ai_enhance.enhance_tables_with_ai → ai_enhance.apply_skeleton_and_verify,
+# vía ai_enhance.word_to_html_full_pipeline) se verifique a mano de punta a
+# punta. Se mantiene solo como fallback hasta entonces.
+
+
 def word_to_clean_html(docx_path: Path, strip_styles: bool = True) -> str:
     with open(docx_path, "rb") as f:
         result = mammoth.convert_to_html(f)

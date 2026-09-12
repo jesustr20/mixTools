@@ -1,20 +1,27 @@
 """
-Etapa 2 del Word→HTML: corrección quirúrgica de tablas con DeepSeek.
+Etapa 2 y Etapa 3 del Word→HTML: corrección de tablas y esqueleto final con DeepSeek.
 
-Recibe el HTML de la Etapa 1 (`structure.docx_to_html`) y le pide al modelo
-que corrija únicamente los patrones de tabla complejos (colspan/rowspan,
+Etapa 2 recibe el HTML de la Etapa 1 (`structure.docx_to_html`) y le pide al
+modelo que corrija únicamente los patrones de tabla complejos (colspan/rowspan,
 colores exactos, columnas) que el motor determinístico no pudo deducir bien.
 No reescribe el documento entero.
 
-Degrada con gracia: si `DEEPSEEK_API_KEY` no está seteada o la llamada falla,
-se devuelve el HTML de entrada sin modificar — un fallo de IA nunca debe
-romper la conversión completa.
+Etapa 3 envuelve el resultado en el esqueleto de salida fijo y verifica que el
+texto visible no haya sido alterado (fidelidad textual).
+
+Las dos degradan con gracia: si `DEEPSEEK_API_KEY` no está seteada o la
+llamada falla, se devuelve el HTML de entrada sin modificar — un fallo de IA
+nunca debe romper la conversión completa.
 """
 import logging
 import os
 import re
+from html import unescape
+from pathlib import Path
 
 import httpx
+
+from app.tools.html_converter.structure import docx_to_html
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +36,7 @@ _TABLE_PROMPT = """el pdf es la tabla, la estructura que usamos es algo asi
 se parte asi:
 <style> </style>
 -- aqui abajo va defrente el cuerpo, no necesariamente es con "body" puede ser directamente con "div"
-<style type="text/css">@page (esta parte siempre ponemos) { margin-top: 2.5cm; margin-bottom: 2.5cm; margin-right: 3cm; margin-left: 3cm; } body (aqui definimos la letra y el tamaño de todo el documento) { font-family: Candara; font-size: 10pt; } --- de aqui en adelante es lo usual-- div, li, td { text-align: justify; } ul li, ol li{ margin-top: 15px; margin-bottom: 15px; } table, thead, tbody { border-collapse: collapse; box-sizing: border-box; vertical-align: top; } -- esta parte es para firmas en las tablas de firmas que usamos pero ahora no es necesario--- .firmas { border-top: 1px solid #000; } </style>
+<style type="text/css">@page (esta parte siempre ponemos) { margin-top: 2.5cm; margin-bottom: 2.5cm; margin-right: 3cm; margin-left: 3cm; } body (aqui definimos la letra y el tamaño de todoel documento) { font-family: Candara; font-size: 10pt; } --- de aqui en adelante es lo usual-- div, li, td { text-align: justify; } ul li, ol li{ margin-top: 15px; margin-bottom: 15px; } table, thead, tbody { border-collapse: collapse; box-sizing: border-box; vertical-align: top; } -- esta parte es para firmas en las tablas de firmas que usamos pero ahora no es necesario--- .firmas { border-top: 1px solid #000; } </style>
 -- aqui viene el detalle de la tabla -- -- align siempre sera "centar" -- border siempre sera "0" -- y lo demas igual
 <table align="center" border="0" cellpadding="0" cellspacing="0" style="width:100%;"> <colgroup> -- seccion de medicion mediante porcentaje de columnas, depende la cantidad de columnas agregamos el porcenaje como en este ejemplo hay 3 columnas "td" agregamos 3 "col width = .." -- <col width="48%" /> <--- En esta parte definimos el tamaño con porcentaje de una columna <col width="auto" /> <col width="48%" /> </colgroup> <tbody> <tr> <td> </td> <td> </td> <td> </td> </tr> </tbody> </table>
 -- un ejemplo de como seria la tabla
@@ -37,7 +44,7 @@ se parte asi:
 -- aqui hago 5 "tr" porque quiero 5 filas por ahora, y 3 "td" porque son 3 columnas, en la primera fila veo que coge "cuadro de acabados altanova toda la fila, para ese caso puedo crer una tabla de una fila, algo asi: si te das cuenta solo tiene 1tr y 1td porque solo sera para el titulo de la primera fila de la tabla del pdf
 <table align="center" border="1" cellpadding="0" cellspacing="0" style="width:100%;"> <tbody> <tr> <td> cuadro de acabados altanova</td> </tr> </tbody> </table> luego un espacio y viene la siguiente tabla el titulo en cada columna, luego viene la enumeracion q cada enumeracion es un "subtitulo" por lo que veo, y luego vien el rellenado, respecto al color si gutas lo peudes poner en la misma fila enumerada para no complicarnos tanto, ahora el detalle de como juntar las columnas por ejemplo en "1 estructura" y para todos los q son asi seria como el ejemplo aqui <table align="center" border="1" cellpadding="0" cellspacing="0" style="width:100%;"> <colgroup> <col width="2%" /> <col width="25%" /> <col width="73%" /> </colgroup> <tbody> <tr> <td>1</td> <td colspan="2" rowspan="1">Estructura</td> <-- Aqui el "coldspan="2" dice que cogio 2 columnas y rowspan="1" porque es su misma fila, </tr> <tr> <td> </td> <td> </td> <td> </td> </tr> <tr> <td> </td> <td> </td> <td> </td> </tr> <tr> <td> </td> <td> </td> <td> </td> </tr> <tr> <td> </td> <td> </td> <td> </td> </tr> </tbody> </table>
 
-ahora te dare un ejemplo de los rowspan, hay casos que necesitaremos juntar filas largas de muchas columnas como filas de la misma columna, en este caso haremos de la misma columna para que se vea identico como en la seccion "2 sala - comedor" del pdf:
+ahora te dare un ejemplo de los rowspan, hay casos que necesitaremos juntar filas largas de muchas columnas como filas de la misma columna, en este caso haremos de la misma columna para quese vea identico como en la seccion "2 sala - comedor" del pdf:
 -- aqui tenemos lo mismo que la tabla de arriba excepto el estilo con el color q es backgroun de esta forma: "style="text-align: center;background-color: #6CE6DA;" aqui en el "td" del numero 2 (esto solo es ejemplo mostrando el numero 2 pero cuando rehagas la tabla te tienes que guiar), le digo q el background sera como el color del pdf, y estara centrado solo el titulo, el numero 2 se mantiene en su columna
 <table align="center" border="1" cellpadding="0" cellspacing="0" style="width:100%;">
 				<colgroup>
@@ -129,21 +136,172 @@ def _has_document_wrapper(html: str) -> bool:
     return bool(_WRAPPER_RE.search(html))
 
 
-def enhance_tables_with_ai(html: str) -> str:
-    """Corrige tablas complejas con DeepSeek; degrada a `html` si algo falla."""
+# Esqueleto de salida fijo confirmado como bueno (Ficha de Actualización de
+# Datos / Convenio de Separación). Las imágenes de cabecera/pie se agregan por
+# proyecto más adelante; acá van como placeholders vacíos.
+_SKELETON_TEMPLATE = """<style type="text/css">@page {
+    margin: 0;
+  }
+  body{
+    font-family: 'Arial';
+	font-size: 11pt;
+    margin: 0;
+    padding: 0.5cm 1.53cm;
+  }
+  div, p, li{
+    text-align: justify;
+  }
+  table, thead, tbody
+  {
+    vertical-align: top;
+    border-collapse: collapse;
+    box-sizing: border-box;
+  }
+  .firmas {
+    border-top: 1px dotted #000;
+  }
+  .ajusTabla {
+    font-size: 0.8em;
+    text-align: center;
+  }
+  .contenido{
+    z-index: 1;
+  }
+  .cabecera{
+    top: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
+  .pie_pagina{
+    bottom: 0;
+    left: 0;
+    right: 0;
+    width: 100%;
+  }
+  .img_cabecera{
+    width: 100%;
+    display: block;
+  }
+  .img_pie_pagina{
+    width: 100%;
+    display: block;
+  }
+  .cuerpo-texto{}
+  @media screen{
+    .cabecera, .pie_pagina{
+      position: initial;
+	}
+    .espacio-cabecera, .espacio-pie{
+      height: 0;
+    }
+  }
+  @media print{
+    .cabecera{
+      position: fixed;
+	}
+    .pie_pagina{
+      position: fixed;
+    }
+    .espacio-cabecera{
+      height: 2.3cm;
+    }
+    .espacio-pie{
+      height: 0.5cm;
+    }
+  }
+</style>
+<div class="cabecera">
+  <!-- banner image goes here later, per-project -->
+</div>
+<table class="contenido" style="font-size: 10pt;" width="100%">
+	<thead>
+		<tr class="espacio-cabecera">
+			<td> </td>
+		</tr>
+	</thead>
+	<tfoot>
+		<tr>
+			<td>
+			<div class="espacio-pie" style="height: 35px; background-color: white"> </div>
+			</td>
+		</tr>
+		<tr><td> </td></tr>
+		<tr><td> </td></tr>
+	</tfoot>
+	<tbody>
+		<tr>
+			<td class="cuerpo-texto">
+			<!-- content goes here, unchanged -->
+			</td>
+		</tr>
+	</tbody>
+</table>
+<div class="pie_pagina">
+  <!-- footer image goes here later, per-project -->
+</div>"""
+
+_SKELETON_PROMPT = (
+    "Vas a recibir el HTML del cuerpo de un documento (ya convertido y corregido). "
+    "Envuélvelo en el esqueleto de salida fijo que aparece abajo como plantilla "
+    "canónica, cumpliendo estas reglas:\n"
+    "- El contenido recibido va DENTRO de <td class=\"cuerpo-texto\">, exactamente "
+    "igual: no borres, no reescribas, no cambies colores/valores/estructura del "
+    "contenido (fidelidad total — solo agregás el envoltorio).\n"
+    "- REGLA DE FIDELIDAD CRÍTICA: el texto visible del contenido debe quedar "
+    "idéntico carácter por carácter al texto de entrada. Solo podés cambiar la "
+    "estructura/wrapping HTML (tags, clases, anidamiento) alrededor del texto; "
+    "jamás reformules, mejores ni alteres el texto real. Si cambiás una sola "
+    "letra, el resultado es inválido.\n"
+    "- El <style> de la plantilla va tal cual. Podés agregar reglas o clases CSS "
+    "nuevas si hace falta para que la estructura no quede engorrosa, pero NO "
+    "renombres ni elimines las clases ya reconocidas (.ajusTabla, .firmas, "
+    ".contenido, .cabecera, .pie_pagina, .cuerpo-texto, .espacio-cabecera, "
+    ".espacio-pie, .img_cabecera, .img_pie_pagina).\n"
+    "- .cabecera y .pie_pagina quedan como divs placeholder VACÍOS, sin <img src> "
+    "todavía (el banner y el pie se rellenan por proyecto después).\n"
+    "- Devuelve el documento HTML completo (con su <style> y la estructura "
+    "thead/tfoot/tbody), con el contenido dentro de .cuerpo-texto.\n\n"
+    "PLANTILLA DE ESQUELETO:\n"
+    + _SKELETON_TEMPLATE
+)
+
+_COMMENT_RE = re.compile(r"<!--.*?-->", re.DOTALL)
+_STYLE_RE = re.compile(r"<style[^>]*>.*?</style>", re.DOTALL | re.IGNORECASE)
+_SCRIPT_RE = re.compile(r"<script[^>]*>.*?</script>", re.DOTALL | re.IGNORECASE)
+_TAG_RE = re.compile(r"<[^>]*>")
+_WHITESPACE_RE = re.compile(r"\s+")
+
+
+def _normalize_visible_text(html: str) -> str:
+    """Texto visible normalizado (sin tags/comentarios/style, whitespace colapsado).
+
+    Útil para verificar la regla de fidelidad textual: el esqueleto agrega solo
+    estructura (tags, clases) y whitespace/comentarios, que acá se descartan,
+    así que comparar el texto normalizado de entrada vs salida detecta si la IA
+    reformuló o alteró el contenido.
+    """
+    text = _COMMENT_RE.sub("", html)
+    text = _STYLE_RE.sub("", text)
+    text = _SCRIPT_RE.sub("", text)
+    text = _TAG_RE.sub("", text)
+    text = unescape(text)
+    text = text.replace("\xa0", " ")
+    return _WHITESPACE_RE.sub(" ", text).strip()
+
+
+def _deepseek_chat(system_content: str, user_content: str) -> str | None:
+    """POST a DeepSeek y devuelve el content del modelo, o None si falla."""
     api_key = os.environ.get("DEEPSEEK_API_KEY")
     if not api_key:
-        logger.warning(
-            "DEEPSEEK_API_KEY no está configurada; se devuelve el HTML sin corregir."
-        )
-        return html
+        logger.warning("DEEPSEEK_API_KEY no está configurada; se omite la pasada de IA.")
+        return None
 
-    system_prompt = _OUTPUT_FORMAT_INSTRUCTION + _TABLE_PROMPT + "\n\n" + _SYSTEM_APPENDIX
     payload = {
         "model": DEEPSEEK_MODEL,
         "messages": [
-            {"role": "system", "content": system_prompt},
-            {"role": "user", "content": html},
+            {"role": "system", "content": system_content},
+            {"role": "user", "content": user_content},
         ],
         "stream": False,
     }
@@ -162,15 +320,50 @@ def enhance_tables_with_ai(html: str) -> str:
         response.raise_for_status()
         content = response.json()["choices"][0]["message"]["content"]
     except (httpx.HTTPError, KeyError, IndexError, TypeError, ValueError) as exc:
-        logger.warning("Falló la corrección de tablas con DeepSeek: %s", exc)
-        return html
+        logger.warning("Falló la llamada a DeepSeek: %s", exc)
+        return None
 
     if isinstance(content, str) and content.strip():
-        if _has_document_wrapper(content):
-            logger.warning(
-                "DeepSeek envolvió la salida en un documento completo "
-                "(DOCTYPE/html/head/body); se descarta y se devuelve el HTML sin corregir."
-            )
-            return html
         return content
-    return html
+    return None
+
+
+def enhance_tables_with_ai(html: str) -> str:
+    """Corrige tablas complejas con DeepSeek; degrada a `html` si algo falla."""
+    system_content = _OUTPUT_FORMAT_INSTRUCTION + _TABLE_PROMPT + "\n\n" + _SYSTEM_APPENDIX
+    result = _deepseek_chat(system_content, html)
+    if result is None:
+        return html
+    if _has_document_wrapper(result):
+        logger.warning(
+            "DeepSeek envolvió la salida en un documento completo "
+            "(DOCTYPE/html/head/body); se descarta y se devuelve el HTML sin corregir."
+        )
+        return html
+    return result
+
+
+def apply_skeleton_and_verify(html: str) -> str:
+    """Envuelve el HTML en el esqueleto fijo y verifica fidelidad (DeepSeek).
+
+    Degrada con gracia: si falta la clave, la llamada falla, o la salida del
+    modelo alteró el texto visible del contenido, devuelve `html` sin el
+    esqueleto, sin romper la conversión.
+    """
+    result = _deepseek_chat(_SKELETON_PROMPT, html)
+    if result is None:
+        return html
+    if _normalize_visible_text(result) != _normalize_visible_text(html):
+        logger.warning(
+            "DeepSeek alteró el texto del contenido; se descarta su salida y se "
+            "devuelve el HTML sin esqueleto."
+        )
+        return html
+    return result
+
+
+def word_to_html_full_pipeline(docx_path: Path) -> str:
+    """Pipeline completo: Etapa 1 → Etapa 2 → Etapa 3, en orden."""
+    stage1 = docx_to_html(docx_path)
+    stage2 = enhance_tables_with_ai(stage1)
+    return apply_skeleton_and_verify(stage2)
