@@ -127,4 +127,66 @@ export async function batchPdfsToJpg(files: File[]): Promise<Blob> {
   return response.blob()
 }
 
+/**
+ * Etapa 1 del Word→HTML (sin IA): extrae la estructura del .docx.
+ * POST multipart/form-data y devuelve el campo `html` de la respuesta JSON.
+ */
+export async function etapa1(file: File): Promise<string> {
+  const form = new FormData()
+  form.append('file', file)
+
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}/api/html-converter/etapa1`, {
+      method: 'POST',
+      headers: { ...getAuthHeader() },
+      body: form,
+    })
+  } catch {
+    throw new Error('No se pudo conectar con el backend. ¿Está corriendo en localhost:8000?')
+  }
+
+  if (!response.ok) {
+    throw await handleError(response)
+  }
+
+  const data = (await response.json()) as { html: string }
+  return data.html
+}
+
+/**
+ * Etapa 2 del Word→HTML (IA): corrige tablas complejas.
+ * POST JSON `{"html": ...}` y devuelve el campo `html` de la respuesta.
+ */
+export async function etapa2(html: string): Promise<string> {
+  return postHtml('/api/html-converter/etapa2', html)
+}
+
+/**
+ * Etapa 3 del Word→HTML (IA): envuelve en el esqueleto y verifica fidelidad.
+ */
+export async function etapa3(html: string): Promise<string> {
+  return postHtml('/api/html-converter/etapa3', html)
+}
+
+async function postHtml(endpoint: string, html: string): Promise<string> {
+  let response: Response
+  try {
+    response = await fetch(`${API_BASE}${endpoint}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...getAuthHeader() },
+      body: JSON.stringify({ html }),
+    })
+  } catch {
+    throw new Error('No se pudo conectar con el backend. ¿Está corriendo en localhost:8000?')
+  }
+
+  if (!response.ok) {
+    throw await handleError(response)
+  }
+
+  const data = (await response.json()) as { html: string }
+  return data.html
+}
+
 export { API_BASE }
