@@ -96,3 +96,19 @@ def test_non_200_returns_input_unchanged(monkeypatch):
     result = enhance_tables_with_ai(ORIGINAL)
 
     assert result == ORIGINAL
+
+
+def test_payload_includes_max_tokens(monkeypatch):
+    """Issue #56: el payload debe fijar max_tokens para evitar truncamiento."""
+    captured = {}
+
+    def fake_post(url, **kwargs):
+        captured["payload"] = kwargs.get("json")
+        return _response_with_content("<p>ok</p>")
+
+    monkeypatch.setattr(ai_enhance.httpx, "post", fake_post)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+
+    enhance_tables_with_ai(ORIGINAL)
+
+    assert captured["payload"]["max_tokens"] == ai_enhance.MAX_OUTPUT_TOKENS
