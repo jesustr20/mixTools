@@ -1,7 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
 import { batchPdfsToJpg, convertFile, pdfToJpg } from './lib/api'
+import { clearCredentials, setCredentials } from './lib/auth'
 
 vi.mock('./lib/api', () => ({
   pdfToJpg: vi.fn(),
@@ -28,6 +29,7 @@ function getDropzone(): HTMLElement {
 }
 
 beforeEach(() => {
+  setCredentials('admin', 'changeme')
   pdfToJpgMock.mockReset()
   batchPdfsToJpgMock.mockReset()
   convertFileMock.mockReset()
@@ -163,5 +165,38 @@ describe('App', () => {
       expect.any(Array),
       false,
     )
+  })
+
+  it('shows the login gate instead of the app when no credentials are present', () => {
+    clearCredentials()
+    render(<App />)
+
+    expect(screen.getByRole('heading', { name: /mixtools/i })).toBeInTheDocument()
+    expect(screen.getByLabelText('Usuario')).toBeInTheDocument()
+    expect(screen.getByLabelText('Contraseña')).toBeInTheDocument()
+    expect(screen.queryByRole('heading', { name: /conversor de archivos/i })).not.toBeInTheDocument()
+  })
+
+  it('reveals the app after submitting credentials', () => {
+    clearCredentials()
+    render(<App />)
+
+    fireEvent.change(screen.getByLabelText('Usuario'), { target: { value: 'admin' } })
+    fireEvent.change(screen.getByLabelText('Contraseña'), { target: { value: 'changeme' } })
+    fireEvent.click(screen.getByRole('button', { name: /entrar/i }))
+
+    expect(screen.getByRole('heading', { name: /conversor de archivos/i })).toBeInTheDocument()
+  })
+
+  it('re-shows the login gate with an error when credentials are cleared', () => {
+    render(<App />)
+    expect(screen.getByRole('heading', { name: /conversor de archivos/i })).toBeInTheDocument()
+
+    act(() => {
+      clearCredentials('Usuario o contraseña incorrectos, intentá de nuevo')
+    })
+
+    expect(screen.getByRole('heading', { name: /mixtools/i })).toBeInTheDocument()
+    expect(screen.getByText('Usuario o contraseña incorrectos, intentá de nuevo')).toBeInTheDocument()
   })
 })
