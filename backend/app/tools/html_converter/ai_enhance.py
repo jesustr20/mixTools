@@ -29,6 +29,13 @@ DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
 DEEPSEEK_MODEL = "deepseek-v4-pro"
 TIMEOUT_SECONDS = 60.0
 
+# Techo de tokens de salida para la pasada de IA (issue #56). El default de
+# deepseek-v4-pro al omitir `max_tokens` es 4096, insuficiente para devolver un
+# documento largo completo → la respuesta se truncaba y la Etapa 3 la rechazaba.
+# Un techo alto no cuesta nada extra: se factura por tokens realmente generados,
+# no por el máximo declarado.
+MAX_OUTPUT_TOKENS = 32000
+
 # Prompt de trabajo real (Jesús) para reconstruir tablas de "cuadros de
 # acabados" con colspan/rowspan y colores exactos del documento original.
 # Se conserva textual para no perder reglas; los colores son de ejemplo.
@@ -290,6 +297,24 @@ def _normalize_visible_text(html: str) -> str:
     return _WHITESPACE_RE.sub(" ", text).strip()
 
 
+def _describe_divergence(a: str, b: str) -> str:
+    """Describe el primer punto donde dos textos normalizados difieren.
+
+    Devuelve el índice del primer carácter distinto y ~50 caracteres de contexto
+    de cada texto alrededor de ese punto. No vuelca el documento completo: solo
+    lo justo para diagnosticar (truncamiento vs. reformulación real).
+    """
+    limit = min(len(a), len(b))
+    idx = next((i for i in range(limit) if a[i] != b[i]), limit)
+    window = 50
+    start = max(0, idx - window)
+    return (
+        f"primer desajuste en el índice {idx}: "
+        f"entrada=[…{a[start:idx + window]}…] "
+        f"salida=[…{b[start:idx + window]}…]"
+    )
+
+
 def _deepseek_chat(system_content: str, user_content: str) -> str | None:
     """POST a DeepSeek y devuelve el content del modelo, o None si falla."""
     api_key = os.environ.get("DEEPSEEK_API_KEY")
@@ -303,6 +328,7 @@ def _deepseek_chat(system_content: str, user_content: str) -> str | None:
             {"role": "system", "content": system_content},
             {"role": "user", "content": user_content},
         ],
+        "max_tokens": MAX_OUTPUT_TOKENS,
         "stream": False,
     }
     headers = {
@@ -353,10 +379,15 @@ def apply_skeleton_and_verify(html: str) -> str:
     result = _deepseek_chat(_SKELETON_PROMPT, html)
     if result is None:
         return html
-    if _normalize_visible_text(result) != _normalize_visible_text(html):
+    input_text = _normalize_visible_text(html)
+    output_text = _normalize_visible_text(result)
+    if input_text != output_text:
         logger.warning(
             "DeepSeek alteró el texto del contenido; se descarta su salida y se "
-            "devuelve el HTML sin esqueleto."
+            "devuelve el HTML sin esqueleto. len(entrada)=%d, len(salida)=%d; %s",
+            len(input_text),
+            len(output_text),
+            _describe_divergence(input_text, output_text),
         )
         return html
     return result

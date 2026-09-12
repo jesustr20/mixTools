@@ -1,4 +1,5 @@
 """Tests de la Etapa 3: esqueleto fijo + pasada de fidelidad (todo mockeado)."""
+import logging
 from pathlib import Path
 
 import httpx
@@ -86,6 +87,29 @@ def test_apply_skeleton_rejects_altered_text(monkeypatch):
     result = apply_skeleton_and_verify(ORIGINAL)
 
     assert result == ORIGINAL
+
+
+def test_apply_skeleton_truncated_output_logs_divergence(monkeypatch, caplog):
+    """Issue #56: una respuesta truncada (cortada a la mitad) debe loguear el
+    punto de divergencia con longitudes y contexto, para confirmar la causa."""
+    body = "lorem ipsum dolor sit amet " * 40
+    truncated_body = body[:400]  # cortado a propósito, a mitad de frase
+    input_html = f"<p>{body}</p>"
+    truncated_html = _wrap_in_skeleton(f"<p>{truncated_body}</p>")
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(truncated_html))
+
+    with caplog.at_level(logging.WARNING, logger="app.tools.html_converter.ai_enhance"):
+        result = apply_skeleton_and_verify(input_html)
+
+    assert result == input_html
+
+    expected_input = _normalize_visible_text(input_html)
+    expected_output = _normalize_visible_text(truncated_html)
+    assert f"len(entrada)={len(expected_input)}" in caplog.text
+    assert f"len(salida)={len(expected_output)}" in caplog.text
+    assert f"primer desajuste en el índice {len(expected_output)}" in caplog.text
 
 
 def test_apply_skeleton_missing_key_returns_input_unchanged(monkeypatch):
