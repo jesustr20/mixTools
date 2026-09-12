@@ -135,11 +135,18 @@ _OUTPUT_FORMAT_INSTRUCTION = (
     "reference/context only, describing conventions, not literal content to insert.\n\n"
 )
 
-_WRAPPER_RE = re.compile(r"<!doctype|<html\b|<head\b|<body\b|<title\b|<style\b", re.IGNORECASE)
+# Marcas de "documento completo" (bugs #47 y #59): la salida debe ser un
+# fragmento, nunca una página <!DOCTYPE><html><head><body> independiente.
+_WRAPPER_RE = re.compile(r"<!doctype|<html\b|<head\b|<body\b|<title\b", re.IGNORECASE)
+
+# En Etapa 2 la salida no debe incluir <style> (el modelo a veces copia el
+# <style> de ejemplo del prompt). En Etapa 3 el esqueleto SÍ arranca con
+# <style>, por eso <style> va aparte y no dentro de _WRAPPER_RE.
+_STYLE_TAG_RE = re.compile(r"<style\b", re.IGNORECASE)
 
 
 def _has_document_wrapper(html: str) -> bool:
-    """True si la salida incluye un wrapper de documento completo (bug #47)."""
+    """True si la salida incluye un wrapper de documento completo (bug #47/#59)."""
     return bool(_WRAPPER_RE.search(html))
 
 
@@ -252,6 +259,9 @@ _SKELETON_PROMPT = (
     "Vas a recibir el HTML del cuerpo de un documento (ya convertido y corregido). "
     "Envuélvelo en el esqueleto de salida fijo que aparece abajo como plantilla "
     "canónica, cumpliendo estas reglas:\n"
+    "- FORMATO DE SALIDA (crítico): tu salida es un FRAGMENTO para embeber, no "
+    "una página independiente. NUNCA agregues <!DOCTYPE>, <html>, <head> ni "
+    "<body>. Empezá directamente con <style> tal como la plantilla de abajo.\n"
     "- El contenido recibido va DENTRO de <td class=\"cuerpo-texto\">, exactamente "
     "igual: no borres, no reescribas, no cambies colores/valores/estructura del "
     "contenido (fidelidad total — solo agregás el envoltorio).\n"
@@ -360,7 +370,7 @@ def enhance_tables_with_ai(html: str) -> str:
     result = _deepseek_chat(system_content, html)
     if result is None:
         return html
-    if _has_document_wrapper(result):
+    if _has_document_wrapper(result) or _STYLE_TAG_RE.search(result):
         logger.warning(
             "DeepSeek envolvió la salida en un documento completo "
             "(DOCTYPE/html/head/body); se descarta y se devuelve el HTML sin corregir."
@@ -378,6 +388,12 @@ def apply_skeleton_and_verify(html: str) -> str:
     """
     result = _deepseek_chat(_SKELETON_PROMPT, html)
     if result is None:
+        return html
+    if _has_document_wrapper(result):
+        logger.warning(
+            "DeepSeek envolvió la salida de la Etapa 3 en un documento completo "
+            "(DOCTYPE/html/head/body); se descarta y se devuelve el HTML sin esqueleto."
+        )
         return html
     input_text = _normalize_visible_text(html)
     output_text = _normalize_visible_text(result)
