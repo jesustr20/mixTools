@@ -3,11 +3,14 @@ import io
 import zipfile
 from pathlib import Path
 
+import httpx
 import pymupdf as fitz
 import pytest
+from docx import Document
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.tools.html_converter import ai_enhance
 
 AUTH_USER = "testuser"
 AUTH_PASSWORD = "testpass"
@@ -39,6 +42,28 @@ def _make_png(path: Path, width: int, height: int) -> Path:
     pix.save(str(path))
     doc.close()
     return path
+
+
+def _make_docx(path: Path, text: str = "Hola MixTools") -> Path:
+    """Genera un .docx real mínimo con python-docx."""
+    doc = Document()
+    doc.add_paragraph(text)
+    doc.save(str(path))
+    return path
+
+
+def _wrap_in_skeleton(content: str) -> str:
+    """Envuelve el contenido en el esqueleto de salida fijo (mínimo para tests)."""
+    return (
+        '<style type="text/css">.contenido{}</style>'
+        '<div class="cabecera"></div>'
+        '<table class="contenido">'
+        '<thead><tr class="espacio-cabecera"><td> </td></tr></thead>'
+        '<tfoot><tr><td><div class="espacio-pie"> </div></td></tr></tfoot>'
+        '<tbody><tr><td class="cuerpo-texto">' + content + "</td></tr></tbody>"
+        "</table>"
+        '<div class="pie_pagina"></div>'
+    )
 
 
 def test_pdf_a_jpg_endpoint(tmp_path: Path):
@@ -212,3 +237,62 @@ def test_auth_correct_credentials(tmp_path: Path):
 def test_auth_wrong_credentials(tmp_path: Path):
     response = _post_pdf_a_jpg(tmp_path, auth=(AUTH_USER, "password-incorrecta"))
     assert response.status_code == 401
+
+
+def _mock_deepseek_pipeline(monkeypatch):
+    """Mockea las dos llamadas a DeepSeek: Etapa 2 devuelve el contenido igual,
+    Etapa 3 lo envuelve en el esqueleto."""
+
+    def fake_post(url, **kwargs):
+        payload = kwargs["json"]
+        system = payload["messages"][0]["content"]
+        user = payload["messages"][1]["content"]
+        content = _wrap_in_skeleton(user) if "cuerpo-texto" in system else user
+        return httpx.Response(
+            200,
+            json={"choices": [{"message": {"content": content}}]},
+            request=httpx.Request("POST", ai_enhance.DEEPSEEK_API_URL),
+        )
+
+    monkeypatch.setattr(ai_enhance.httpx, "post", fake_post)
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+
+
+def test_convertir_returns_skeleton(tmp_path: Path, monkeypatch):
+    _mock_deepseek_pipeline(monkeypatch)
+    docx = _make_docx(tmp_path / "documento.docx")
+
+    client = TestClient(app)
+    with open(docx, "rb") as f:
+        response = client.post(
+            "/api/html-converter/convertir",
+            files={"file": ("documento.docx", f, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            params={"devolver_json": "true"},
+            auth=AUTH,
+        )
+
+    assert response.status_code == 200
+    html = response.json()["html"]
+    assert "cuerpo-texto" in html
+    assert "cabecera" in html
+    assert "pie_pagina" in html
+    assert "Hola MixTools" in html
+
+
+def test_convertir_degrades_without_key(tmp_path: Path, monkeypatch):
+    monkeypatch.delenv("DEEPSEEK_API_KEY", raising=False)
+    docx = _make_docx(tmp_path / "documento.docx")
+
+    client = TestClient(app)
+    with open(docx, "rb") as f:
+        response = client.post(
+            "/api/html-converter/convertir",
+            files={"file": ("documento.docx", f, "application/vnd.openxmlformats-officedocument.wordprocessingml.document")},
+            params={"devolver_json": "true"},
+            auth=AUTH,
+        )
+
+    assert response.status_code == 200
+    html = response.json()["html"]
+    assert "Hola MixTools" in html
+    assert "cuerpo-texto" not in html  # sin clave: degrada a la salida de Etapa 1
