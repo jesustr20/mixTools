@@ -57,6 +57,26 @@ y el navegador de Windows (que técnicamente es "de afuera") se queda
 colgado esperando sin error ni éxito. En Linux nativo no cambia nada, así
 que el mismo comando sirve para las dos plataformas.
 
+## Autenticación (Basic Auth)
+
+Todos los endpoints de negocio bajo `/api/*` (converter, html-converter,
+comparator) requieren autenticación básica HTTP: el navegador muestra su
+popup nativo la primera vez. **`/api/health` y `/docs` quedan públicos.**
+
+Las credenciales se leen de variables de entorno:
+
+```bash
+export AUTH_USER=jesus
+export AUTH_PASSWORD=una-clave-fuerte
+uv run uvicorn app.main:app --host 0.0.0.0 --port 8000
+```
+
+- Si **no** definís `AUTH_USER`/`AUTH_PASSWORD`, se usa el default de
+  desarrollo `admin` / `changeme`.
+- **En cualquier entorno desplegado (producción, servidor, internet) es
+  obligatorio** setear variables reales — dejarlo en `admin`/`changeme` es
+  como no tener contraseña.
+
 ## Lint y tests
 
 ```bash
@@ -106,6 +126,7 @@ archivos directo desde el navegador.
   (single y batch) hoy; el resto de las utilidades se van agregando
   módulo por módulo.
 - **Multi-tenant/producción**: si algún día lo subes a un servidor
-  (en vez de correrlo local), agrega autenticación básica antes de
-  exponerlo a internet — ahora mismo cualquiera que llegue al puerto puede
-  usarlo.
+  (en vez de correrlo local), ya hay autenticación básica de un solo
+  usuario (ver sección "Autenticación" arriba) como stopgap. La auth
+  completa por equipo (6 personas, accesos individuales) es el issue #34,
+  para después.

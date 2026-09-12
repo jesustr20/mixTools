@@ -6,9 +6,10 @@ router.py (endpoints) y engine.py (lógica pura, sin FastAPI). Para agregar
 una Herramienta 4 en el futuro: crea la carpeta, su router, y regístralo
 aquí abajo con app.include_router(...). Nada más se toca.
 """
-from fastapi import FastAPI
+from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from app.auth import require_auth
 from app.tools.comparator.router import router as comparator_router
 from app.tools.converter.router import router as converter_router
 from app.tools.html_converter.router import router as html_converter_router
@@ -28,9 +29,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-app.include_router(converter_router)
-app.include_router(html_converter_router)
-app.include_router(comparator_router)
+app.include_router(converter_router, dependencies=[Depends(require_auth)])
+app.include_router(html_converter_router, dependencies=[Depends(require_auth)])
+app.include_router(comparator_router, dependencies=[Depends(require_auth)])
 
 
 @app.get("/api/health")
