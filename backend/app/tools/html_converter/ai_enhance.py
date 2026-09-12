@@ -18,7 +18,7 @@ import httpx
 logger = logging.getLogger(__name__)
 
 DEEPSEEK_API_URL = "https://api.deepseek.com/chat/completions"
-DEEPSEEK_MODEL = "deepseek-flash"
+DEEPSEEK_MODEL = "deepseek-v4-pro"
 TIMEOUT_SECONDS = 60.0
 
 # Prompt de trabajo real (Jesús) para reconstruir tablas de "cuadros de
