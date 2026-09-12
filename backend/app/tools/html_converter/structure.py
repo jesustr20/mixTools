@@ -1,11 +1,11 @@
 """
 Extracción estructural del XML de un .docx (Etapa 1 del Word→HTML).
 
-A diferencia de `engine.word_to_clean_html` (mammoth + BeautifulSoup), acá
-leemos el XML directamente vía python-docx para recuperar datos que mammoth
-descarta: colores de celda (incluyendo colores de tema con tint/shade),
-anchos de columna reales (twips→porcentaje) y colspan/rowspan reales
-(gridSpan/vMerge). Sin IA (eso es la Etapa 2).
+Leemos el XML directamente vía python-docx (no un conversor genérico) para
+recuperar datos que un HTML simplificado descarta: colores de celda
+(incluyendo colores de tema con tint/shade), anchos de columna reales
+(twips→porcentaje) y colspan/rowspan reales (gridSpan/vMerge). Sin IA
+(eso es la Etapa 2).
 
 La salida es un árbol de dataclasses (`DocumentStructure`) y una función de
 render que lo convierte en HTML. El esqueleto de salida fijo (cabecera, pie,

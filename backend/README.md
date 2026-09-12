@@ -105,7 +105,7 @@ archivos directo desde el navegador.
 ### Herramienta 2 — Word a HTML (`/api/html-converter`)
 | Endpoint | Qué hace |
 |---|---|
-| `POST /convertir?strip_styles=true&devolver_json=false` | DOCX -> HTML limpio (descarga .html o JSON) |
+| `POST /convertir?devolver_json=false` | DOCX -> HTML con esqueleto (descarga .html o JSON) |
 
 ### Herramienta 3 — Comparador (`/api/comparator`)
 | Endpoint | Qué hace |
