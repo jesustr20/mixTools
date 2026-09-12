@@ -1,18 +1,24 @@
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import App from './App'
-import { batchPdfsToJpg, convertFile, pdfToJpg } from './lib/api'
+import { batchPdfsToJpg, convertFile, etapa1, etapa2, etapa3, pdfToJpg } from './lib/api'
 import { clearCredentials, setCredentials } from './lib/auth'
 
 vi.mock('./lib/api', () => ({
   pdfToJpg: vi.fn(),
   batchPdfsToJpg: vi.fn(),
   convertFile: vi.fn(),
+  etapa1: vi.fn(),
+  etapa2: vi.fn(),
+  etapa3: vi.fn(),
 }))
 
 const pdfToJpgMock = vi.mocked(pdfToJpg)
 const batchPdfsToJpgMock = vi.mocked(batchPdfsToJpg)
 const convertFileMock = vi.mocked(convertFile)
+const etapa1Mock = vi.mocked(etapa1)
+const etapa2Mock = vi.mocked(etapa2)
+const etapa3Mock = vi.mocked(etapa3)
 
 function makePdfFile(name: string): File {
   return new File(['%PDF-1.4 fake'], name, { type: 'application/pdf' })
@@ -33,9 +39,15 @@ beforeEach(() => {
   pdfToJpgMock.mockReset()
   batchPdfsToJpgMock.mockReset()
   convertFileMock.mockReset()
+  etapa1Mock.mockReset()
+  etapa2Mock.mockReset()
+  etapa3Mock.mockReset()
   pdfToJpgMock.mockResolvedValue(new Blob(['jpeg'], { type: 'image/jpeg' }))
   batchPdfsToJpgMock.mockResolvedValue(new Blob(['zip'], { type: 'application/zip' }))
   convertFileMock.mockResolvedValue(new Blob(['pdf'], { type: 'application/pdf' }))
+  etapa1Mock.mockResolvedValue('<p>stage1</p>')
+  etapa2Mock.mockResolvedValue('<p>stage2</p>')
+  etapa3Mock.mockResolvedValue('<p>stage3</p>')
   URL.createObjectURL = vi.fn(() => 'blob:mock-url')
   URL.revokeObjectURL = vi.fn()
 })
@@ -148,7 +160,7 @@ describe('App', () => {
     expect((filesArg as File[]).map((f) => f.name)).toEqual(['a.pdf', 'b.pdf', 'c.pdf'])
   })
 
-  it('renders the Word → HTML tool and routes a .docx to convertFile', async () => {
+  it('renders the Word → HTML staged panel and routes a .docx to etapa1', async () => {
     render(<App />)
     fireEvent.click(screen.getByRole('button', { name: /word → html/i }))
 
@@ -159,12 +171,8 @@ describe('App', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /convertir/i }))
 
-    await waitFor(() => expect(convertFileMock).toHaveBeenCalledTimes(1))
-    expect(convertFileMock).toHaveBeenCalledWith(
-      '/api/html-converter/convertir',
-      expect.any(Array),
-      false,
-    )
+    await waitFor(() => expect(etapa1Mock).toHaveBeenCalledTimes(1))
+    expect(convertFileMock).not.toHaveBeenCalled()
   })
 
   it('shows the login gate instead of the app when no credentials are present', () => {

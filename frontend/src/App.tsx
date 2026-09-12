@@ -5,6 +5,7 @@ import LoginScreen from './components/LoginScreen'
 import MergePdfsPanel from './components/MergePdfsPanel'
 import PdfToJpgPanel from './components/PdfToJpgPanel'
 import Rail from './components/Rail'
+import WordToHtmlStagedPanel from './components/WordToHtmlStagedPanel'
 import { hasCredentials, onAuthCleared, setCredentials } from './lib/auth'
 import { TOOLS } from './lib/tools'
 import type { ToolId } from './lib/tools'
@@ -65,6 +66,7 @@ function App() {
           {utility?.conversion && (
             <GenericConversionPanel config={utility.conversion} />
           )}
+          {activeTool === 'html' && <WordToHtmlStagedPanel />}
         </div>
       </main>
     </div>

@@ -112,18 +112,7 @@ export const TOOLS: Tool[] = [
     desc: 'Convierte un .docx a HTML semántico, sin la basura mso-* que deja Word — listo para pegar en Sperant o cualquier CMS.',
     available: true,
     utilities: [
-      {
-        id: 'convertir',
-        label: 'Word → HTML',
-        conversion: {
-          label: 'Un archivo .docx',
-          accept: '.docx',
-          multiple: false,
-          endpoint: '/api/html-converter/convertir',
-          outputFilename: 'convertido.html',
-          resultLabel: 'Word → HTML',
-        },
-      },
+      { id: 'convertir', label: 'Word → HTML' },
     ],
   },
   {
