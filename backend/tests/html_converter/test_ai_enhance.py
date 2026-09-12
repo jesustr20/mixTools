@@ -26,14 +26,14 @@ def test_enhance_returns_model_content(monkeypatch):
         captured["url"] = url
         captured["payload"] = kwargs.get("json")
         captured["headers"] = kwargs.get("headers")
-        return _response_with_content("<html>corregido</html>")
+        return _response_with_content("<table><tr><td>corregido</td></tr></table>")
 
     monkeypatch.setattr(ai_enhance.httpx, "post", fake_post)
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
 
     result = enhance_tables_with_ai(ORIGINAL)
 
-    assert result == "<html>corregido</html>"
+    assert result == "<table><tr><td>corregido</td></tr></table>"
     assert captured["url"] == ai_enhance.DEEPSEEK_API_URL
     assert captured["headers"]["Authorization"] == "Bearer test-key"
     assert captured["payload"]["model"] == ai_enhance.DEEPSEEK_MODEL
@@ -41,6 +41,22 @@ def test_enhance_returns_model_content(monkeypatch):
     system_prompt = captured["payload"]["messages"][0]["content"]
     assert "coldspan" in system_prompt or "colspan" in system_prompt
     assert "do not change colors/values that are already correct" in system_prompt
+    assert "NEVER add <!DOCTYPE>" in system_prompt  # refuerzo contra el bug #47
+
+
+def test_rejects_document_wrapper(monkeypatch):
+    """Bug #47: si el modelo envuelve la salida en DOCTYPE/html/head/body, se descarta."""
+    wrapped = (
+        "<!DOCTYPE html><html><head><style>body{font-family:Candara}</style></head>"
+        "<body><p>original</p></body></html>"
+    )
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _response_with_content(wrapped))
+
+    result = enhance_tables_with_ai(ORIGINAL)
+
+    assert result == ORIGINAL
 
 
 def test_missing_key_returns_input_unchanged(monkeypatch):
