@@ -17,6 +17,12 @@ function makePdfFile(name: string): File {
   return new File(['%PDF-1.4 fake'], name, { type: 'application/pdf' })
 }
 
+function makeDocxFile(name: string): File {
+  return new File(['fake docx'], name, {
+    type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  })
+}
+
 function getDropzone(): HTMLElement {
   return screen.getByRole('button', { name: /uno o varios pdfs/i })
 }
@@ -138,5 +144,24 @@ describe('App', () => {
     const [, filesArg, multipleArg] = convertFileMock.mock.calls[0]
     expect(multipleArg).toBe(true)
     expect((filesArg as File[]).map((f) => f.name)).toEqual(['a.pdf', 'b.pdf', 'c.pdf'])
+  })
+
+  it('renders the Word → HTML tool and routes a .docx to convertFile', async () => {
+    render(<App />)
+    fireEvent.click(screen.getByRole('button', { name: /word → html/i }))
+
+    expect(screen.getByRole('heading', { name: /word a html limpio/i })).toBeInTheDocument()
+
+    const dropzone = screen.getByRole('button', { name: /un archivo .docx/i })
+    fireEvent.drop(dropzone, { dataTransfer: { files: [makeDocxFile('a.docx')] } })
+
+    fireEvent.click(screen.getByRole('button', { name: /convertir/i }))
+
+    await waitFor(() => expect(convertFileMock).toHaveBeenCalledTimes(1))
+    expect(convertFileMock).toHaveBeenCalledWith(
+      '/api/html-converter/convertir',
+      expect.any(Array),
+      false,
+    )
   })
 })

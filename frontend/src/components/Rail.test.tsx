@@ -18,11 +18,11 @@ describe('Rail', () => {
     )
   })
 
-  it('renders Word → HTML and Comparador as disabled (próximamente)', () => {
+  it('renders Word → HTML as enabled and Comparador as disabled (próximamente)', () => {
     render(<Rail activeTool="converter" onSelectTool={vi.fn()} />)
-    expect(screen.getByRole('button', { name: /word → html/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /word → html/i })).toBeEnabled()
     expect(screen.getByRole('button', { name: /comparador/i })).toBeDisabled()
-    expect(screen.getAllByText('próximamente')).toHaveLength(2)
+    expect(screen.getAllByText('próximamente')).toHaveLength(1)
   })
 
   it('calls onSelectTool when clicking an available tool', () => {
@@ -32,10 +32,17 @@ describe('Rail', () => {
     expect(onSelectTool).toHaveBeenCalledWith('converter')
   })
 
-  it('does not call onSelectTool when clicking a disabled tool', () => {
+  it('calls onSelectTool with html when clicking Word → HTML', () => {
     const onSelectTool = vi.fn()
     render(<Rail activeTool="converter" onSelectTool={onSelectTool} />)
     fireEvent.click(screen.getByRole('button', { name: /word → html/i }))
+    expect(onSelectTool).toHaveBeenCalledWith('html')
+  })
+
+  it('does not call onSelectTool when clicking a disabled tool', () => {
+    const onSelectTool = vi.fn()
+    render(<Rail activeTool="converter" onSelectTool={onSelectTool} />)
+    fireEvent.click(screen.getByRole('button', { name: /comparador/i }))
     expect(onSelectTool).not.toHaveBeenCalled()
   })
 })
