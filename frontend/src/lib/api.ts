@@ -5,7 +5,11 @@
  * llaman estas funciones y nunca hacen fetch() directo.
  */
 
+import { clearCredentials, getAuthHeader } from './auth'
+
 const API_BASE: string = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000'
+
+const AUTH_ERROR_MESSAGE = 'Usuario o contraseña incorrectos, intentá de nuevo'
 
 async function readError(response: Response): Promise<string> {
   try {
@@ -14,6 +18,18 @@ async function readError(response: Response): Promise<string> {
   } catch {
     return `HTTP ${response.status}`
   }
+}
+
+/**
+ * Convierte una respuesta no-OK en un Error. Si fue un 401, además borra las
+ * credenciales (lo que dispara `onAuthCleared` en la UI y vuelve a mostrar la
+ * pantalla de login) antes de devolver el error.
+ */
+async function handleError(response: Response): Promise<Error> {
+  if (response.status === 401) {
+    clearCredentials(AUTH_ERROR_MESSAGE)
+  }
+  return new Error(await readError(response))
 }
 
 /**
@@ -31,6 +47,7 @@ export async function pdfToJpg(file: File, dpi?: number): Promise<Blob> {
   try {
     response = await fetch(`${API_BASE}/api/converter/pdf-a-jpg${query}`, {
       method: 'POST',
+      headers: { ...getAuthHeader() },
       body: form,
     })
   } catch {
@@ -38,7 +55,7 @@ export async function pdfToJpg(file: File, dpi?: number): Promise<Blob> {
   }
 
   if (!response.ok) {
-    throw new Error(await readError(response))
+    throw await handleError(response)
   }
 
   return response.blob()
@@ -67,6 +84,7 @@ export async function convertFile(
   try {
     response = await fetch(`${API_BASE}${endpoint}`, {
       method: 'POST',
+      headers: { ...getAuthHeader() },
       body: form,
     })
   } catch {
@@ -74,7 +92,7 @@ export async function convertFile(
   }
 
   if (!response.ok) {
-    throw new Error(await readError(response))
+    throw await handleError(response)
   }
 
   return response.blob()
@@ -95,6 +113,7 @@ export async function batchPdfsToJpg(files: File[]): Promise<Blob> {
   try {
     response = await fetch(`${API_BASE}/api/converter/batch-pdf-a-jpg`, {
       method: 'POST',
+      headers: { ...getAuthHeader() },
       body: form,
     })
   } catch {
@@ -102,7 +121,7 @@ export async function batchPdfsToJpg(files: File[]): Promise<Blob> {
   }
 
   if (!response.ok) {
-    throw new Error(await readError(response))
+    throw await handleError(response)
   }
 
   return response.blob()

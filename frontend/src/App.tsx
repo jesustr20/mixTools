@@ -1,15 +1,36 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Chips from './components/Chips'
 import GenericConversionPanel from './components/GenericConversionPanel'
+import LoginScreen from './components/LoginScreen'
 import MergePdfsPanel from './components/MergePdfsPanel'
 import PdfToJpgPanel from './components/PdfToJpgPanel'
 import Rail from './components/Rail'
+import { hasCredentials, onAuthCleared, setCredentials } from './lib/auth'
 import { TOOLS } from './lib/tools'
 import type { ToolId } from './lib/tools'
 
 function App() {
   const [activeTool, setActiveTool] = useState<ToolId>('converter')
   const [activeUtility, setActiveUtility] = useState('pdf-a-jpg')
+  const [authenticated, setAuthenticated] = useState(hasCredentials())
+  const [authError, setAuthError] = useState<string | null>(null)
+
+  useEffect(() => {
+    return onAuthCleared((error) => {
+      setAuthError(error)
+      setAuthenticated(false)
+    })
+  }, [])
+
+  const handleLogin = (username: string, password: string) => {
+    setCredentials(username, password)
+    setAuthError(null)
+    setAuthenticated(true)
+  }
+
+  if (!authenticated) {
+    return <LoginScreen error={authError} onLogin={handleLogin} />
+  }
 
   const tool = TOOLS.find((t) => t.id === activeTool) ?? TOOLS[0]
 
