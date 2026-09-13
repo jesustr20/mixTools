@@ -98,6 +98,51 @@ def test_apply_skeleton_rejects_altered_text(monkeypatch):
     assert result == ORIGINAL
 
 
+def test_normalize_visible_text_ignores_intertag_whitespace():
+    """Issue #72: el whitespace entre etiquetas (indentación/pretty-print) no debe
+    contarse como texto; compacto y pretty-print normalizan igual."""
+    compact = "<p>A</p><p>B</p>"
+    pretty = "<p>A</p>\n<p>B</p>\n"
+
+    assert _normalize_visible_text(compact) == "AB"
+    assert _normalize_visible_text(pretty) == "AB"
+
+
+def test_normalize_visible_text_preserves_inter_word_whitespace():
+    """El espacio entre palabras DENTRO del texto no debe tocarse."""
+    assert _normalize_visible_text("<p>Conste por el presente</p>") == "Conste por el presente"
+    assert _normalize_visible_text("<p>Hola <strong>mundo</strong></p>") == "Hola mundo"
+
+
+def test_apply_skeleton_accepts_intertag_newline(monkeypatch):
+    """Issue #72: un salto de línea de formato entre </p><p> no debe rechazar."""
+    input_html = "<p>CONVENIO DE SEPARACIÓN</p><p>Conste por el presente</p>"
+    output = _wrap_in_skeleton(
+        "<p>CONVENIO DE SEPARACIÓN</p>\n<p>Conste por el presente</p>"
+    )
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(output))
+
+    result = apply_skeleton_and_verify(input_html)
+
+    assert result == output
+
+
+def test_apply_skeleton_rejects_real_text_alteration(monkeypatch):
+    """El fix de #72 no debe volver el chequeo permisivo: un cambio real de texto
+    dentro del párrafo (\"el\" → \"la\") sigue rechazándose."""
+    input_html = "<p>Conste por el presente</p>"
+    output = _wrap_in_skeleton("<p>Conste por la presente</p>")
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(output))
+
+    result = apply_skeleton_and_verify(input_html)
+
+    assert result == input_html
+
+
 def test_apply_skeleton_accepts_literal_marker_list(monkeypatch):
     """Issue #68: convertir (i)/(ii) en <ol><li> con el marcador literal preservado
     debe pasar la verificación de fidelidad."""
@@ -323,4 +368,6 @@ def test_normalize_visible_text_strips_markup():
         "<!-- comentario -->"
         "<p>a&nbsp;b &amp; c</p>"
     )
-    assert _normalize_visible_text(html) == "Hola mundo a b & c"
+    # El espacio entre </div> y <p> es inter-tag y se descarta (issue #72);
+    # los espacios DENTRO del texto ("Hola mundo", "a b & c") se conservan.
+    assert _normalize_visible_text(html) == "Hola mundoa b & c"
