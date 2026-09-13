@@ -64,6 +64,12 @@ def test_apply_skeleton_returns_model_content(monkeypatch):
     assert "NUNCA agregues <!DOCTYPE>" in system_prompt  # refuerzo contra el bug #59
     assert "background-color: yellow" in system_prompt  # resaltado de blancos (#68)
     assert "marcador original" in system_prompt  # marcador literal dentro del <li> (#68)
+    assert ".titulo-documento" in system_prompt  # título del documento (#70)
+    assert ".titulo-seccion" in system_prompt  # títulos de sección (#70)
+    assert ".sub-item" in system_prompt  # sub-ítems anidados (#70)
+    assert ".firma-bloque" in system_prompt  # bloques de firma (#70)
+    assert "TODAS LAS APARICIONES" in system_prompt  # listas consistentes en todo el doc (#70)
+    assert "errores tipográficos" in system_prompt  # prohibición de "corregir" (#70)
 
 
 def test_apply_skeleton_preserves_visible_text(monkeypatch):
@@ -116,6 +122,107 @@ def test_apply_skeleton_rejects_css_numbered_list(monkeypatch):
     output = _wrap_in_skeleton(
         '<ol style="list-style: lower-roman"><li>Vinculado</li><li>Otro</li></ol>'
     )
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(output))
+
+    result = apply_skeleton_and_verify(input_html)
+
+    assert result == input_html
+
+
+def test_apply_skeleton_accepts_document_title_class(monkeypatch):
+    """Issue #70: envolver el título en .titulo-documento (texto literal intacto)
+    debe pasar la fidelidad."""
+    input_html = "<p><strong><u>CONTRATO DE SERVICIOS</u></strong></p>"
+    output = _wrap_in_skeleton(
+        '<p class="titulo-documento"><strong><u>CONTRATO DE SERVICIOS</u></strong></p>'
+    )
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(output))
+
+    result = apply_skeleton_and_verify(input_html)
+
+    assert result == output
+    assert 'class="titulo-documento"' in result
+
+
+def test_apply_skeleton_accepts_section_title_class(monkeypatch):
+    """Issue #70: envolver un encabezado genérico en .titulo-seccion debe pasar."""
+    input_html = "<p><strong>ARTÍCULO 4</strong></p><p>Texto del artículo</p>"
+    output = _wrap_in_skeleton(
+        '<p class="titulo-seccion"><strong>ARTÍCULO 4</strong></p><p>Texto del artículo</p>'
+    )
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(output))
+
+    result = apply_skeleton_and_verify(input_html)
+
+    assert result == output
+    assert 'class="titulo-seccion"' in result
+
+
+def test_apply_skeleton_accepts_nested_sub_items(monkeypatch):
+    """Issue #70: sub-ítems con .sub-item (marcador literal conservado) pasan."""
+    input_html = "<p>3. Obligaciones</p><p>(i) Primera</p><p>(ii) Segunda</p>"
+    output = _wrap_in_skeleton(
+        '<p>3. Obligaciones</p>'
+        '<p class="sub-item">(i) Primera</p>'
+        '<p class="sub-item">(ii) Segunda</p>'
+    )
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(output))
+
+    result = apply_skeleton_and_verify(input_html)
+
+    assert result == output
+    assert result.count('class="sub-item"') == 2
+
+
+def test_apply_skeleton_accepts_signature_block_preserving_underscores(monkeypatch):
+    """Issue #70: .firma-bloque con guiones bajos literales preservados pasa."""
+    input_html = "<p>_________</p><p>Juan Pérez</p><p>DNI 12345678</p>"
+    output = _wrap_in_skeleton(
+        '<div class="firma-bloque">'
+        "<p>_________</p><p>Juan Pérez</p><p>DNI 12345678</p>"
+        "</div>"
+    )
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(output))
+
+    result = apply_skeleton_and_verify(input_html)
+
+    assert result == output
+    assert "_________" in result
+
+
+def test_apply_skeleton_rejects_signature_underscores_replaced_by_css(monkeypatch):
+    """Issue #70: reemplazar los guiones bajos por un borde CSS pierde caracteres
+    y debe ser rechazado por la fidelidad."""
+    input_html = "<p>_________</p><p>Juan Pérez</p><p>DNI 12345678</p>"
+    output = _wrap_in_skeleton(
+        '<div class="firma-bloque">'
+        '<p style="border-top: 1px solid #000"></p>'
+        "<p>Juan Pérez</p><p>DNI 12345678</p>"
+        "</div>"
+    )
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(output))
+
+    result = apply_skeleton_and_verify(input_html)
+
+    assert result == input_html
+
+
+def test_apply_skeleton_rejects_typo_correction(monkeypatch):
+    """Issue #70: corregir un typo (doble punto) altera el texto y debe ser rechazado."""
+    input_html = "<p>Miraflores.. Lima</p>"
+    output = _wrap_in_skeleton("<p>Miraflores. Lima</p>")
 
     monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
     monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(output))
