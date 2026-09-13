@@ -328,6 +328,10 @@ _STYLE_RE = re.compile(r"<style[^>]*>.*?</style>", re.DOTALL | re.IGNORECASE)
 _SCRIPT_RE = re.compile(r"<script[^>]*>.*?</script>", re.DOTALL | re.IGNORECASE)
 _TAG_RE = re.compile(r"<[^>]*>")
 _WHITESPACE_RE = re.compile(r"\s+")
+# Whitespace SOLO entre el cierre de una etiqueta y la apertura de la siguiente
+# (formato/indentación del código, nunca visible en el navegador). Se descarta
+# por completo antes de quitar las etiquetas (issue #72).
+_INTER_TAG_WS_RE = re.compile(r">\s+<")
 
 
 def _normalize_visible_text(html: str) -> str:
@@ -341,6 +345,7 @@ def _normalize_visible_text(html: str) -> str:
     text = _COMMENT_RE.sub("", html)
     text = _STYLE_RE.sub("", text)
     text = _SCRIPT_RE.sub("", text)
+    text = _INTER_TAG_WS_RE.sub("><", text)
     text = _TAG_RE.sub("", text)
     text = unescape(text)
     text = text.replace("\xa0", " ")
