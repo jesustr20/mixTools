@@ -64,6 +64,7 @@ def test_apply_skeleton_returns_model_content(monkeypatch):
     assert "NUNCA agregues <!DOCTYPE>" in system_prompt  # refuerzo contra el bug #59
     assert "background-color: yellow" in system_prompt  # resaltado de blancos (#68)
     assert "marcador original" in system_prompt  # marcador literal dentro del <li> (#68)
+    assert "LISTAS IMPLÍCITAS" in system_prompt  # listas sin marcador escrito (#74)
     assert ".titulo-documento" in system_prompt  # título del documento (#70)
     assert ".titulo-seccion" in system_prompt  # títulos de sección (#70)
     assert ".sub-item" in system_prompt  # sub-ítems anidados (#70)
@@ -275,6 +276,34 @@ def test_apply_skeleton_rejects_typo_correction(monkeypatch):
     result = apply_skeleton_and_verify(input_html)
 
     assert result == input_html
+
+
+def test_apply_skeleton_accepts_implicit_list_css_numbering(monkeypatch):
+    """Issue #74: agrupar párrafos SIN marcador en una lista con numeración CSS no
+    borra caracteres y debe ACEPTARSE (caso inverso a quitar un marcador real)."""
+    input_html = (
+        "<p>Las obligaciones son las siguientes:</p>"
+        "<p>La realización de gestiones;</p>"
+        "<p>La entrega de los documentos;</p>"
+        "<p>El pago de los gastos.</p>"
+    )
+    output = _wrap_in_skeleton(
+        "<p>Las obligaciones son las siguientes:</p>"
+        '<ol style="list-style: decimal">'
+        "<li>La realización de gestiones;</li>"
+        "<li>La entrega de los documentos;</li>"
+        "<li>El pago de los gastos.</li>"
+        "</ol>"
+    )
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(output))
+
+    result = apply_skeleton_and_verify(input_html)
+
+    assert result == output
+    assert "<ol" in result
+    assert "<li>La realización de gestiones;</li>" in result
 
 
 def test_apply_skeleton_rejects_document_wrapper(monkeypatch):
