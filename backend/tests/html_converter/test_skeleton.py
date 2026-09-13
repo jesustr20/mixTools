@@ -62,6 +62,8 @@ def test_apply_skeleton_returns_model_content(monkeypatch):
     assert ".contenido" in system_prompt
     assert "reformules" in system_prompt  # regla de fidelidad explícita en el prompt
     assert "NUNCA agregues <!DOCTYPE>" in system_prompt  # refuerzo contra el bug #59
+    assert "background-color: yellow" in system_prompt  # resaltado de blancos (#68)
+    assert "marcador original" in system_prompt  # marcador literal dentro del <li> (#68)
 
 
 def test_apply_skeleton_preserves_visible_text(monkeypatch):
@@ -88,6 +90,39 @@ def test_apply_skeleton_rejects_altered_text(monkeypatch):
     result = apply_skeleton_and_verify(ORIGINAL)
 
     assert result == ORIGINAL
+
+
+def test_apply_skeleton_accepts_literal_marker_list(monkeypatch):
+    """Issue #68: convertir (i)/(ii) en <ol><li> con el marcador literal preservado
+    debe pasar la verificación de fidelidad."""
+    input_html = "<p>(i) Vinculado</p><p>(ii) Otro</p>"
+    output = _wrap_in_skeleton("<ol><li>(i) Vinculado</li><li>(ii) Otro</li></ol>")
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(output))
+
+    result = apply_skeleton_and_verify(input_html)
+
+    assert result == output
+    assert "<ol>" in result
+    assert "<li>(i) Vinculado</li>" in result
+
+
+def test_apply_skeleton_rejects_css_numbered_list(monkeypatch):
+    """Issue #68: si el marcador se delega a CSS (no queda literal), la fidelidad
+    existente debe seguir rechazando la salida."""
+    input_html = "<p>(i) Vinculado</p><p>(ii) Otro</p>"
+    # el modelo eliminó "(i)"/"(ii)" delegándolos a numeración CSS
+    output = _wrap_in_skeleton(
+        '<ol style="list-style: lower-roman"><li>Vinculado</li><li>Otro</li></ol>'
+    )
+
+    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setattr(ai_enhance.httpx, "post", lambda *a, **k: _ok_response(output))
+
+    result = apply_skeleton_and_verify(input_html)
+
+    assert result == input_html
 
 
 def test_apply_skeleton_rejects_document_wrapper(monkeypatch):
